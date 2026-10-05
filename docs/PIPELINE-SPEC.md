@@ -3,7 +3,7 @@
 > **The single source of truth for how the job-search funnel runs end to end:**
 > discover → index → scan → score → qualify → reconcile → owed-drain → report + resume + outreach → apply → outcome-feedback → learn.
 >
-> This documents the **live system** (forked from career-finder and generalized), consolidates every accumulated learning into one registry, and flags where the older docs have drifted from the code. It is an *as-built* spec, not a proposal — the pipeline is already running (launchd `com.careerfinder.pipeline`, hourly).
+> This documents the **live system** (forked from career-finder and generalized), consolidates every accumulated learning into one registry, and flags where the older docs have drifted from the code. It is an *as-built* spec, not a proposal — the pipeline is already running (`morning.mjs`, scheduled by `schedule.mjs`).
 >
 > **Scope / non-duplication.** This is the **flow + thresholds + learnings** doc. It deliberately does NOT repeat:
 > install/config (→ [`docs/SETUP.md`](SETUP.md)) · the user/system file split (→ [`DATA_CONTRACT.md`](../DATA_CONTRACT.md)) · per-script flags & exit codes (→ [`docs/SCRIPTS.md`](SCRIPTS.md)) · customization knobs (→ [`docs/CUSTOMIZATION.md`](CUSTOMIZATION.md)) · the component diagram (→ [`docs/ARCHITECTURE.md`](ARCHITECTURE.md)). It links to those and focuses on how the pieces run as one funnel.
@@ -59,38 +59,35 @@
         └──────────────────┘      └────────────────────┘      └────────────────────────┘
 ```
 
-Everything left of stage 4 runs **headless/autonomously** (launchd + `claude -p`). Stages 5–7's browser work (LinkedIn contacts) is drained at the next browser-capable interactive session.
+Everything left of stage 4 runs **headless/autonomously** (`morning.mjs` + `claude -p`). Stages 5–7's browser work (LinkedIn contacts) is drained at the next browser-capable interactive session.
 
 ---
 
 ## 3. Cadence & orchestration
 
-**launchd jobs** (`~/Library/LaunchAgents/`):
+**One entry point, three modes.** Every scheduled run is `node scripts/morning.mjs --mode <daily|speed|hot>`.
+`scripts/schedule.mjs install` writes the jobs (launchd `com.career-finder.<mode>` on macOS, a
+`# career-finder BEGIN/END` crontab block on Linux; Windows is manual, see [`SCHEDULING.md`](SCHEDULING.md)).
 
-| Job | Trigger | Runs | Purpose |
-|---|---|---|---|
-| `com.careerfinder.pipeline` | `StartCalendarInterval` → **1×/day in the morning (local time)** | `scripts/pipeline-cron.sh` | The discovery→score→quota spine. `RunAtLoad false`; logs `data/_pipeline.log`. |
+| Mode | Default | Trigger | Logs | Purpose |
+|---|---|---|---|---|
+| `daily` | **ON** | once a day at `schedule.daily_time` (default 07:00 local) | `data/_pipeline.log` | The discovery→score→quota spine, including the LinkedIn logged-in lanes. |
+| `speed` | opt-in (`--with-speed N`, 2-4/day) | spread 09:00-18:00 | `data/_speed-cron.log` | 12h ATS sweep + primary-role gap. No LinkedIn. |
+| `hot` | opt-in (`--with-hot [MIN]`, 30-60 min, default 60) | interval | `data/_hot.log` | Sweep + score `data/hot-companies.tsv` only. No LinkedIn. |
 
-> **Cadence: ONE run per day, the morning run.** This replaces the previous 3×/day
-> schedule (7am / 3pm / 11pm local). The 3pm and 11pm intervals were removed from the plist, not
-> disabled — `StartCalendarInterval` now holds a single entry.
+> **Cost ceiling.** Every `claude -p` call runs on Sonnet by default and is counted in
+> `data/_claude-calls.log`; at `pipeline.daily_claude_cap` (default 40) calls per local day across
+> all modes the run exits 3. The scheduled runs use `claude -p --dangerously-skip-permissions`
+> (headless runs cannot answer prompts) — `npm run schedule:status` discloses this.
 >
-> **Timezone note:** the machine clock is **America/New_York**, and launchd `StartCalendarInterval`
-> fires on machine-local time, so 7am local time is stored as the Eastern hour **10:00**. If the machine
-> timezone changes, re-derive that hour to keep the intent at the morning run. `com.careerfinder.speed` is
-> **retired** — `pipeline-cron.sh` does everything; running both would double the Opus spend.
->
-> **What the single run implies.** Everything the pipeline does now happens on the morning cycle,
-> so the "time-of-day gates" below are no longer a filter — the stage-0 discovery crawl and the
-> stage-8 Gmail outcome sweep fire on the only run there is. Two consequences worth knowing:
-> a job posted at 8am local is not seen until the next morning (time-to-lead is now up to ~24h rather
-> than ~8h), and the daily-quota SHORT path gets one bounded retry per day instead of three. The
-> rolling `--hours 48` sweep window is unchanged and still covers the gap, so nothing is missed —
-> it is surfaced later.
+> **What a single daily run implies.** A job posted after the morning run is not seen until the next
+> morning (time-to-lead up to ~24h) unless speed or hot is opted in. The rolling sweep window covers
+> the gap, so nothing is missed, it is surfaced later.
 
-**`scripts/pipeline-cron.sh`** internals:
-- **Mutual exclusion:** atomic `mkdir /tmp/careerfinder-pipeline-cron.lock`; a lock older than **120 min** is reclaimed (orphan from SIGKILL/OOM); overlapping launches exit immediately.
-- **Time-of-day gates (fire on the morning run):** company-discovery agent (stage 0 web crawl) **and** `detect-outcomes.sh` (stage 8 Gmail sweep) both run once/day on the morning cycle. Since 2026-07-26 that is the *only* cycle, so these gates are now no-ops that always pass. They are kept rather than removed so restoring a second daily run does not silently triple the discovery-crawl and Gmail-sweep spend.
+**`scripts/morning.mjs`** internals:
+- **Mutual exclusion:** an atomic lock directory per mode; a stale lock is reclaimed; overlapping launches exit immediately.
+- **Kill switches** (checked before the lock, each logs a SKIPPED line): `data/PIPELINE_OFF`, `data/HOT_OFF`, `data/LINKEDIN_OFF`, `data/_pipeline-skip-dates.txt`, the 30-min usage-wall backoff `data/_hot-quota-backoff`.
+- **Once-a-day lanes** (discover, Gmail outcomes) carry a per-day sentinel so a second daily run does not repeat their spend.
 - **Session entry** also runs the owed check (stage 4) via the SessionStart hook in `.claude/settings.json`.
 
 ---
@@ -101,14 +98,14 @@ Each stage: **Purpose · Runs it · Inputs · Outputs · Rules.**
 
 ### Stage 0 — Index growth / company discovery
 - **Purpose:** continuously grow the universe of companies in the configured area with a public ATS board, so the zero-token sweep has more to cover. Coverage compounds.
-- **Runs it:** `pipeline-cron.sh` step 0 (08:00 gate) `claude -p ... --model opus` agent · `scripts/discover-companies.mjs` (every cycle, zero-token) · `scripts/build-company-index.mjs` (on-demand seeder). Modes: `discover.md`, `orchestrator.md`, `scan-index.md`.
+- **Runs it:** `morning.mjs` daily `discover` lane (once/day) `claude -p` on Sonnet · `scripts/discover-companies.mjs` (every cycle, zero-token) · `scripts/build-company-index.mjs` (on-demand seeder). Modes: `discover.md`, `orchestrator.md`, `scan-index.md`.
 - **Inputs:** `data/_discovered-companies.tsv` (`company⇥careers_url`), a built-in CURATED list (~35 boards), `data/scan-history.tsv` (build-index derives boards from past job URLs), optional YC Algolia (`YC_ALGOLIA_KEY`).
 - **Outputs:** `data/company-index.tsv`.
 - **Rules:** idempotent append-new / skip-existing; dedup on `careers_url` (lowercased, trailing-slash-stripped) **and** company name; `detectApi()` records `ats_type` + the zero-token `ats_api_url` (greenhouse, ashby, lever, workday, bamboohr, teamtailor, smartrecruiters, workable, recruitee). **Subagents cannot drive the browser MCP** — each discovery agent writes its own `_swarm-*.tsv`/`_orch-*.tsv` then `cat >> _discovered-companies.tsv` (no parallel-write races). Verify each slug resolves to a real board with ≥1 job before adding.
 
 ### Stage 1 — Zero-token ATS sweep of the index
 - **Purpose:** hit every indexed company's ATS JSON directly (no LLM, no browser) and emit the fresh, in-territory, on-archetype roles. The coverage backbone and the no-remote gate of record.
-- **Runs it:** `pipeline-cron.sh` step 1 → `node scripts/run-pipeline.mjs --hours 48` → `scripts/scan-index.mjs` (engine: `scripts/scan-core.mjs`). Mode: `scan-index.md`.
+- **Runs it:** `morning.mjs` `ats:index` lane → `scripts/scan-index.mjs` (plus `ats:primary-watchlist`: `--only data/primary-watchlist.tsv --primary-only --hours 72`) (engine: `scripts/scan-core.mjs`). Mode: `scan-index.md`.
 - **Inputs:** `data/company-index.tsv` (only rows with a non-empty `ats_api_url`); dedup sources `data/scan-history.tsv`, `data/pipeline.md`, `data/applications.md`, `data/scored-jobs.tsv`; `portals.yml` (`title_filter`).
 - **Outputs:** `data/_candidates.tsv`; stamps `last_scanned`/`last_status` back onto `company-index.tsv`; optional `data/_browser-queue.tsv` (non-ATS companies).
 - **Rules:**
@@ -121,14 +118,14 @@ Each stage: **Purpose · Runs it · Inputs · Outputs · Rules.**
 
 ### Stage 1b — LinkedIn guest comb
 - **Purpose:** a secondary fresh-role feed from LinkedIn's public guest job API.
-- **Runs it:** `pipeline-cron.sh` step 1b → `node scripts/speed-linkedin.mjs --hours 24 --json`.
+- **Runs it:** `morning.mjs` daily `linkedin:guest` lane → `node scripts/speed-linkedin.mjs --hours 24 --json`.
 - **Inputs:** LinkedIn guest API (`…f_TPR=r86400`), `data/_speed-noise.txt`, `data/scored-jobs.tsv` (dedup).
 - **Outputs:** `data/_speed-li.json`.
 - **Rules:** uses the shared `scripts/role-filters.mjs` (`REMOTE`, `LOCAL`, `TITLE_DROP`, `loadNoise`) so it can't drift from the web feed. **LinkedIn card locations are unverified** (can show a local city for a Remote role) — ATS truth wins at scoring. Subject to the **LinkedIn kill-switch** (`data/LINKEDIN_OFF`).
 
 ### Stage 1c — Open-web role feed + web-search learning loop
 - **Purpose:** find **net-new** employers/roles the indexed sweep can't see yet (open web), and get smarter at it every run.
-- **Runs it:** `pipeline-cron.sh` step 1c `claude -p ... --model opus` (WebSearch/WebFetch only — no browser) → `scripts/web-roles.mjs --clean`/`--archive` → `scripts/web-roles-learn.mjs`. Mode: `scan-web.md`.
+- **Runs it:** `morning.mjs` daily `websearch` lane, `claude -p` on Sonnet (WebSearch/WebFetch only — no browser) → `scripts/web-roles.mjs --clean`/`--archive` → `scripts/web-roles-learn.mjs`. Mode: `scan-web.md`.
 - **Inputs:** **the newest learning in `data/web-search-learnings.md`** (read first, re-targets the run), live web; dedup vs `scored-jobs.tsv` + `_candidates.tsv` + `_speed-noise.txt`.
 - **Outputs:** `data/_web-roles.tsv`, `data/_web-roles-history.tsv`, appends net-new employers to `data/_discovered-companies.tsv` (feeds stage 0), and the learner appends to `data/web-search-learnings.md`.
 - **Rules:**
@@ -148,7 +145,7 @@ Thin supply for a narrow role is normal. A short day is reported, never inflated
 
 ### Stage 2 — LLM scoring (A–G rubric, ≥ qualify_score bar)
 - **Purpose:** score every fresh candidate against the candidate's CV + targeting, write the canonical ledger, and flag qualifiers.
-- **Runs it:** `pipeline-cron.sh` step 2 `claude -p ... --model opus` (interactive sessions fan out per source-slice via `general-purpose`/opus subagents; headless cron uses one agent). Helper: `scripts/record-scored.mjs`. Rubric: `modes/offer.md` + `modes/_shared.md` vs `cv.md` + `modes/_profile.md`.
+- **Runs it:** `morning.mjs` `score` lane, `claude -p` on `pipeline.scoring_model` (Sonnet), capped at `pipeline.score_cap` per run. Helper: `scripts/record-scored.mjs`. Rubric: `modes/offer.md` + `modes/_shared.md` vs `cv.md` + `modes/_profile.md`.
 - **Guard:** only runs if there are new signals (ATS+LinkedIn+web > 0) → empty cycles cost zero tokens.
 - **Inputs:** `data/_candidates.tsv`, `data/_speed-li.json`, `data/_web-roles.tsv`; dedup vs `scored-jobs.tsv`; rubric files.
 - **Outputs:** appends every triaged candidate → **`data/scored-jobs.tsv`** (the canonical ledger); ≥ qualify_score → `data/qualifiers.tsv`; logs the cycle via `scripts/speed-metrics.mjs`.
@@ -161,7 +158,7 @@ Thin supply for a narrow role is normal. A short day is reported, never inflated
 
 ### §4a — Loop until the daily quota (bounded)
 
-`pipeline-cron.sh` repeats discover → scan → score rounds until `daily-quota.mjs` reports the
+When short, `morning.mjs` (daily only) runs keep-search: a near-miss re-score, then `keep_search.max_rounds` web rounds (default 0), then an index backstop, stopping once `daily-quota.mjs` reports the
 board holds `pipeline.daily_quota` qualifiers (score >= `pipeline.qualify_score`, found within
 `pipeline.window_hours`) including at least `pipeline.primary_quota` matching
 `targets.primary_role`, or a round cap is hit. Each round varies its queries; primary-role-first
@@ -173,14 +170,14 @@ manufacture the number.**
 
 ### Stage 3 — Reconcile · prune · daily archetype quota
 - **Purpose:** keep the qualifier views honest against the canonical ledger, hold the board to 24h, and enforce daily archetype coverage.
-- **Runs it:** `pipeline-cron.sh` step 3 → `prune-qualifiers.mjs` → `reconcile-qualifiers.mjs` → `feedback-outcomes.mjs --learn` → `web-roles-learn.mjs` → `drain-outreach.mjs --bullets-only` → `pipeline-owed.mjs` → `daily-quota.mjs`.
+- **Runs it:** `morning.mjs` lanes, in order (`prune-qualifiers.mjs` → `reconcile-qualifiers.mjs` → `feedback-outcomes.mjs --learn` → `web-roles-learn.mjs` → `drain-outreach.mjs --bullets-only` → `pipeline-owed.mjs` → `daily-quota.mjs`).
 - **`prune-qualifiers.mjs`:** drop any `qualifiers.tsv` row whose `posted`/`date` is >24h old (`MAX_MS=24h`).
 - **`reconcile-qualifiers.mjs`:** match each qualifier to its canonical `scored-jobs.tsv` row by **job-id in the URL** (gh_jid / Ashby UUID / Lever / Workday / LinkedIn numeric), fallback normalized company+role (latest canonical wins), then classify: **CONFIRMED** (keep, backfill `found_at`) · **DEMOTED** (canonical < qualify_score → drop, false positive) · **RESCORE** (canonical older than card → keep, re-score) · **ORPHAN** (no canonical row → keep + backfill a `scored-jobs.tsv` row so the dashboard can surface it). Logs `data/_qualifiers-reconcile.log`. *Why it exists: the dashboard Found panel reads `scored-jobs.tsv`, not `qualifiers.tsv`, so a qualifier with no timestamped ledger row is invisible (finding 2026-06-16).*
 - **`daily-quota.mjs`** (reads `scored-jobs.tsv` only; **exit 0 = met, 1 = short**): the board (within `pipeline.window_hours`, ≥ `pipeline.qualify_score`) must hold `pipeline.daily_quota` qualifiers AND `pipeline.primary_quota` matching `isPrimaryRole()`. `QUOTA: SHORT` names which gate failed. If no primary-role qualifier exists, it surfaces the best primary near-miss (4.0 to just below the bar, last 7d) flagged below-bar, never on the board. Dismissal semantics: the pool excludes only **user** dismissals; `prune-board.mjs` writes `aged` in col 11 for window expiry, which the fallback treats as a live lead to re-verify. On SHORT, the cron runs one extra targeted pass. **Never inflate a score to hit the quota.**
 
 ### Stage 4 — Owed reconciliation (the unskippable guarantee)
 - **Purpose:** guarantee that every job that qualified gets the full kit — nothing silently dropped across sessions.
-- **Runs it:** `scripts/pipeline-owed.mjs` (superset: report + résumé + outreach) · `scripts/outreach-owed.mjs` (outreach only). Wired into the **SessionStart hook** (`.claude/settings.json`) and `pipeline-cron.sh` step 3.
+- **Runs it:** `scripts/pipeline-owed.mjs` (superset: report + résumé + outreach) · `scripts/outreach-owed.mjs` (outreach only). Wired into the **SessionStart hook** (`.claude/settings.json`) and the `morning.mjs` `pipeline-owed` lane.
 - **Inputs:** `scored-jobs.tsv`, `qualifiers.tsv`, `applications.md`, `outreach-log.tsv`, on-disk `output/cv-*.pdf` + `reports/*.md`.
 - **Outputs:** prints `OWED: N (report:a resume:b outreach:c)` + per-job missing list (or `--json`).
 - **Rules:** **THRESHOLD = 4.3.** **`WINDOW_MS = 24h` — NOT a durable backlog**: a find older than 24h leaves the active/owed view; do **not** resurface or backfill (older rows stay in `scored-jobs.tsv` only as history). Terminal tracker states (Applied / Discarded / SKIP / Rejected / Offer) leave the pipeline by decision. Biases to "not covered" when unsure so nothing is skipped; always exits 0.
@@ -239,7 +236,7 @@ manufacture the number.**
 
 ### Stage 8 — Outcome detection + feedback learning
 - **Purpose:** learn from real-world responses so scoring and targeting improve.
-- **Runs it:** `pipeline-cron.sh` 09:00 gate → `scripts/detect-outcomes.sh` (`claude -p`, **read-only Gmail**) → `scripts/record-outcome.mjs` → `scripts/feedback-outcomes.mjs --learn`. Downstream: `patterns.md`/`analyze-patterns.mjs`, `followup.md`/`followup-cadence.mjs`.
+- **Runs it:** `morning.mjs` daily `outcomes` lane (once/day, only when there are in-flight applications; `claude -p`, **read-only Gmail**, mode `feedback.md` → Outcomes (headless)) → `scripts/record-outcome.mjs` → `scripts/feedback-outcomes.mjs --learn`. Downstream: `patterns.md`/`analyze-patterns.mjs`, `followup.md`/`followup-cadence.mjs`.
 - **Inputs:** `scripts/applied-watchlist.mjs` (in-flight applied jobs), Gmail (MCP), `qualifiers.tsv`, `applications.md`.
 - **Outputs:** edits the Status cell of existing `applications.md` rows (appends a dated `(auto-detected from Gmail)` note); `data/qualifier-outcomes.tsv`; and `--learn` prepends a dated, data-driven learning to **`modes/scan-web.md`** (which the scorer reads).
 - **Rules:** **READ-ONLY Gmail** — never send/reply/draft/delete/archive/label/modify; classify rejected/interview/offer/responded/NONE; an auto-acknowledgement is **not** "responded"; never regress a status. `--learn` fires once ≥5 decided outcomes exist (e.g. "FDE 67% vs SA 0% → prioritize FDE"). `followup` bans "just checking in"/"circling back"; cadence Applied 7d (max 2 then cold), Responded/Interview 1d.
@@ -279,9 +276,9 @@ manufacture the number.**
 | **Draft-answers gate** | score ≥ 4.5 | `auto-pipeline.md` |
 | **Recommend-against** | score < 4.0 | Ethical Use (`CLAUDE.md`) |
 | **Active-pipeline window** | last **24h** (not a backlog) | `pipeline-owed.mjs` (`WINDOW_MS=24h`), `daily-quota.mjs` (`HOURS=24`), `prune-qualifiers.mjs` (`MAX_MS=24h`) |
-| **Sweep window** | rolling **48h** | `scan-core.mjs` `makeHoursPredicate`, `run-pipeline.mjs --hours 48` |
+| **Sweep window** | rolling **48h** | `scan-core.mjs` `makeHoursPredicate`, `morning.mjs` `ats:index` |
 | **Daily qualifier quota** | **`daily_quota` qualifiers AND `primary_quota` primary-role** — both gate the exit code | `daily-quota.mjs` (reads `pipeline.*`) |
-| **Qualifiers per run** | **loop until the quota, capped rounds; may end short, never inflate** (§4a) | `pipeline-cron.sh` round cap |
+| **Qualifiers per run** | **loop until the quota, capped rounds; may end short, never inflate** (§4a) | `morning.mjs` keep-search caps |
 | **Territory** | `location` + `remote_policy` | `scan-core.mjs` location/title filters, `role-filters.mjs`, `_profile.md` |
 | **Browser concurrency** | **1, not configurable** (no `--concurrency` flag) | `scan-roster.mjs`; debug Chrome :9222 |
 | **Roster volume** | **2 profile visits/run, 12/day** | `scan-roster.mjs` + `li-budget.mjs` (shared counter) |
@@ -319,7 +316,7 @@ How the pipeline checks its own output. **Two tiers, by design:** deterministic 
 | all | `verify-pipeline.mjs` | deterministic | — | ledger/tracker data integrity | on-demand |
 | all | **6-phase review team** (Find/Score/Report/Résumé/Outreach/Data) | **agent** | **Opus** | deep adversarial re-check of ONE job | **opt-in** |
 
-**The auto per-stage verifier — `scripts/verify-stage.mjs`:** runs a Sonnet judge at score/outreach/résumé/report, writes a scorecard to `output/verify/*.verify.json`, and **exits 1 only on a HARD fail** (fabrication, unmet hard gate, score inflation, wrong CTA) so it can gate. It runs *after* the free deterministic gates and adds the semantic checks they can't do. **Kill-switch:** `touch data/VERIFY_OFF`. **Skip-safe:** if the `claude` CLI is unavailable (headless), it exits 0 rather than breaking the run. Wired into `pipeline-cron.sh` (score stage + the outreach/résumé drain).
+**The auto per-stage verifier — `scripts/verify-stage.mjs`:** runs a Sonnet judge at score/outreach/résumé/report, writes a scorecard to `output/verify/*.verify.json`, and **exits 1 only on a HARD fail** (fabrication, unmet hard gate, score inflation, wrong CTA) so it can gate. It runs *after* the free deterministic gates and adds the semantic checks they can't do. **Kill-switch:** `touch data/VERIFY_OFF`. **Skip-safe:** if the `claude` CLI is unavailable (headless), it exits 0 rather than breaking the run. Wired into `morning.mjs` as the daily `verify-outreach` lane (up to 5 drafts, counts toward `daily_claude_cap`).
 
 **The opt-in 6-agent team** stays the *only* Opus verification — triggered manually ("review {company} before I apply"), never auto-spawned, to control token cost.
 

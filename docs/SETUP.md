@@ -55,6 +55,19 @@ claude
 
 Then paste a job offer URL or description. Career-Finder will automatically evaluate it, generate a report, create a tailored PDF, and track it.
 
+### 6. Schedule the morning run (optional)
+
+```bash
+npm run doctor          # prerequisites
+npm run morning:dry     # every lane it would run, and why any is skipped; spends nothing
+npm run linkedin:login  # optional: log the dedicated Chrome profile into LinkedIn once
+npm run schedule -- install   # daily run at schedule.daily_time; --with-speed / --with-hot opt in
+npm run schedule:status
+```
+
+Scheduled runs call `claude -p --dangerously-skip-permissions` (headless runs cannot answer
+prompts), on Sonnet, capped at `pipeline.daily_claude_cap` calls per day. See [`SCHEDULING.md`](SCHEDULING.md).
+
 ## Available Commands
 
 | Action | How |

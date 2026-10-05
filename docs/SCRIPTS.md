@@ -18,6 +18,10 @@ All scripts live in `scripts/` as `.mjs` modules and are exposed via `npm run <n
 | `npm run rollback` | `scripts/update-system.mjs rollback` | Rollback last update |
 | `npm run liveness` | `scripts/check-liveness.mjs` | Test if job URLs are still active |
 | `npm run scan` | `scripts/scan.mjs` | Zero-token portal scanner |
+| `npm run morning` | `scripts/morning.mjs` | The scheduled run (`--mode daily\|speed\|hot`); `morning:dry` prints the lane plan |
+| `npm run schedule` | `scripts/schedule.mjs` | `install` / `uninstall` / `status` / `run-now` / `--print` the launchd or crontab jobs |
+| `npm run pipeline:off` | `scripts/pipeline.mjs` | Master pause for every scheduled run (`pipeline:on` resumes) |
+| `npm run linkedin:login` | `scripts/chrome-debug.mjs` + `morning.mjs` | Log the dedicated Chrome profile into LinkedIn once |
 
 ---
 

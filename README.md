@@ -17,9 +17,19 @@ and tracks everything. **It never applies or sends anything on its own.** You re
 2. In this folder: `npm install` and `npx playwright install chromium` (PDF generation).
 3. Run `claude` in this folder, paste or attach your resume, and say **"set me up"**.
    Onboarding writes `cv.md`, `config/profile.yml`, `modes/_profile.md` and `portals.yml`.
-4. Check it: `node scripts/targets.mjs` prints your roles, location and thresholds;
-   `node scripts/targets.mjs --test "<job title>" "<location>"` shows how one posting is judged.
-5. Paste a job URL to evaluate it, or run `/career-finder scan`.
+4. Check it: `npm run doctor`, then `npm run morning:dry` (prints every lane it would run and why
+   any would be skipped, spends nothing). `node scripts/targets.mjs --test "<job title>" "<location>"`
+   shows how one posting is judged.
+5. Optional, LinkedIn job lanes (on by default, daily run only): `npm run linkedin:login` once to log
+   the dedicated Chrome profile in. Without Chrome these lanes are skipped, not failed.
+6. Schedule the morning run: `npm run schedule -- install` (daily at `schedule.daily_time`; add
+   `--with-speed` or `--with-hot` to opt in to more runs). Check it with `npm run schedule:status`.
+7. Paste a job URL to evaluate it, or run `/career-finder scan`.
+
+**Scheduled runs use `claude -p --dangerously-skip-permissions`**, because a headless run cannot
+answer permission prompts. They run on Sonnet and stop at `pipeline.daily_claude_cap` (default 40)
+claude calls per day. Pause everything with `npm run pipeline:off`. Details:
+[`docs/SCHEDULING.md`](docs/SCHEDULING.md).
 
 Full guide: [`docs/SETUP.md`](docs/SETUP.md). Everything you can tune: [`docs/CUSTOMIZATION.md`](docs/CUSTOMIZATION.md).
 
@@ -51,7 +61,8 @@ Archetypes, narrative and negotiation notes go in `modes/_profile.md`.
 /career-finder dashboard      → terminal dashboard
 ```
 
-The full mode list is in `CLAUDE.md`.
+The full mode list, and which modes run automatically in which scheduled lane, is the router table in
+[`.claude/skills/career-finder/SKILL.md`](.claude/skills/career-finder/SKILL.md).
 
 ## How the morning run works
 
