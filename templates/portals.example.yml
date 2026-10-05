@@ -1,0 +1,83 @@
+# Portal Scanner Configuration
+# Used by /career-finder scan to discover new offers automatically.
+# Onboarding copies this file to portals.yml (user layer) and fills it in for
+# the roles and location confirmed in config/profile.yml.
+#
+# Strategy (3 levels):
+#   1. Browser -> careers_url of each company (real-time, reliable)
+#   2. ATS APIs (Greenhouse / Ashby / Lever) -> structured JSON (fast, zero-token)
+#   3. WebSearch with site: filters (broad discovery, may be stale)
+#
+# IMPORTANT: Each company in tracked_companies MUST have careers_url.
+#
+# Source of truth for roles and location is config/profile.yml (`targets`,
+# `location`). title_filter below should mirror targets.roles +
+# targets.title_keywords + targets.title_negatives; the zero-token scripts read
+# the profile directly via scripts/targets.mjs.
+#
+# EXAMPLE VALUES below are for a placeholder Data Engineer in Chicago.
+# Replace every one of them during onboarding.
+
+# -- Title filter --
+# At least 1 positive must match. A plain negative is cancelled when a
+# positive also matches; seniority words only boost.
+title_filter:
+  positive:
+    - "Data Engineer"          # EXAMPLE
+    - "Analytics Engineer"     # EXAMPLE
+    - "Data Platform Engineer" # EXAMPLE
+  negative:
+    - "Intern"
+    - "Junior"
+    - "Entry Level"
+  seniority_boost:
+    - "Senior"
+    - "Staff"
+    - "Lead"
+
+# -- Location filter --
+# Hint for query construction and a soft post-filter. The hard filter is
+# location + remote_policy in config/profile.yml.
+location_filter:
+  allowed_regions:
+    - "Chicago"                # EXAMPLE
+    - "Evanston"               # EXAMPLE
+  remote_policy: "remote-country"   # mirror location.remote_policy
+
+# -- Search queries --
+# Each query triggers a WebSearch. Use site: to filter by portal.
+# Write one per (portal x role); {ROLE} and {AREA} are illustrative.
+search_queries:
+  - name: Ashby — {ROLE} {AREA}
+    query: 'site:jobs.ashbyhq.com "Data Engineer" "Chicago"'   # EXAMPLE
+    enabled: true
+
+  - name: Greenhouse — {ROLE} {AREA}
+    query: 'site:job-boards.greenhouse.io "Data Engineer" "Chicago"'   # EXAMPLE
+    enabled: true
+
+  - name: Lever — {ROLE} {AREA}
+    query: 'site:jobs.lever.co "Data Engineer" "Chicago"'   # EXAMPLE
+    enabled: true
+
+  - name: Wellfound — {ROLE} {AREA}
+    query: 'site:wellfound.com "Data Engineer" "Chicago"'   # EXAMPLE
+    enabled: true
+
+# -- Tracked companies --
+# Companies that hire the target roles in the target area (or remotely, if
+# allowed). Onboarding seeds 20-50 of these; the discover mode grows
+# data/company-index.tsv beyond this list.
+# scan_method: playwright (default), websearch, greenhouse_api
+# For Greenhouse companies, add api: for structured JSON access.
+tracked_companies:
+  - name: Example Co                                           # EXAMPLE
+    careers_url: https://job-boards.greenhouse.io/exampleco
+    api: https://boards-api.greenhouse.io/v1/boards/exampleco/jobs
+    notes: "Why this company fits the target roles."
+    enabled: false
+
+  - name: Example Startup                                      # EXAMPLE
+    careers_url: https://jobs.ashbyhq.com/examplestartup
+    notes: "Ashby board; scanned via the Ashby API."
+    enabled: false

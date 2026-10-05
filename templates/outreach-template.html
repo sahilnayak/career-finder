@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{COMPANY}} {{ROLE}} -- Outreach drafts</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --text: #1c1917;
+    --muted: #78716c;
+    --accent: #c2410c;
+    --accent-soft: #fed7aa;
+    --border: #e7e5e4;
+    --green: #15803d;
+    --green-soft: #dcfce7;
+    --amber: #b45309;
+    --amber-soft: #fef3c7;
+    --red: #b91c1c;
+    --red-soft: #fee2e2;
+    --gold: #b45309;
+    --silver: #475569;
+    --bronze: #92400e;
+    --code-bg: #f5f5f4;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 48px 24px 96px;
+  }
+  .container { max-width: 880px; margin: 0 auto; }
+  header.doc-head {
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
+  }
+  header.doc-head .eyebrow {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0 0 8px;
+  }
+  header.doc-head h1 {
+    font-size: 30px;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  header.doc-head .meta {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0;
+  }
+  header.doc-head .meta a { color: var(--accent); text-decoration: none; }
+  header.doc-head .meta a:hover { text-decoration: underline; }
+
+  .send-order {
+    background: var(--accent-soft);
+    border-left: 4px solid var(--accent);
+    padding: 14px 18px;
+    border-radius: 4px;
+    margin: 0 0 28px;
+    font-size: 14.5px;
+  }
+  .send-order strong { color: var(--accent); }
+
+  .checklist {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 22px;
+    margin: 0 0 36px;
+    font-size: 14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .checklist h4 {
+    margin: 0 0 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .checklist ul { list-style: none; padding: 0; margin: 0; }
+  .checklist li { margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .checklist input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+
+  .banner {
+    background: var(--amber-soft);
+    border-left: 4px solid var(--amber);
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 0 0 28px;
+    font-size: 14px;
+  }
+  .banner strong { color: var(--amber); }
+
+  .persona {
+    margin: 48px 0 0;
+    padding-top: 8px;
+  }
+  .persona h2 {
+    font-size: 24px;
+    margin: 0 0 6px;
+    letter-spacing: -0.005em;
+    border-left: 4px solid var(--accent);
+    padding-left: 14px;
+  }
+  .persona .target {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 6px 18px;
+  }
+  .persona .target a { color: var(--accent); text-decoration: none; }
+  .persona .target a:hover { text-decoration: underline; }
+  .persona .observation {
+    color: var(--muted);
+    font-size: 13.5px;
+    font-style: italic;
+    margin: 0 0 16px 18px;
+    padding: 8px 12px;
+    background: var(--code-bg);
+    border-radius: 4px;
+    border-left: 3px solid var(--border);
+  }
+
+  .channel { margin: 24px 0 0; }
+  .channel h3 {
+    font-size: 16px;
+    margin: 24px 0 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+
+  .pick {
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin: 14px 0;
+    background: var(--surface);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    position: relative;
+  }
+  .pick.gold   { border-color: var(--gold); }
+  .pick.silver { border-color: var(--silver); }
+  .pick.bronze { border-color: var(--bronze); }
+  .pick .medal {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+  }
+  .pick.gold   .medal { background: #fef3c7; color: var(--gold); }
+  .pick.silver .medal { background: #e2e8f0; color: var(--silver); }
+  .pick.bronze .medal { background: #fed7aa; color: var(--bronze); }
+
+  .pick .why {
+    color: var(--muted);
+    font-size: 13.5px;
+    font-style: italic;
+    margin: 0 0 14px;
+  }
+
+  .copy-block {
+    position: relative;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 16px 16px 16px;
+    margin: 8px 0;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .copy-block .label {
+    display: inline-block;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--surface);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    transition: background 0.15s ease;
+  }
+  .copy-btn:hover { background: var(--accent-soft); }
+  .copy-btn.copied { background: var(--green-soft); color: var(--green); border-color: var(--green); }
+
+  .charcount {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .charcount.ok    { background: var(--green-soft); color: var(--green); }
+  .charcount.warn  { background: var(--amber-soft); color: var(--amber); }
+  .charcount.over  { background: var(--red-soft);   color: var(--red); }
+
+  .provenance {
+    margin-top: 12px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .provenance .label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 11px;
+    font-weight: 600;
+    margin-right: 8px;
+  }
+  .provenance ul { margin: 4px 0 0; padding-left: 18px; }
+  .provenance li { margin: 2px 0; }
+
+  .warnings {
+    margin: 16px 0;
+    padding: 12px 16px;
+    background: var(--amber-soft);
+    border-left: 4px solid var(--amber);
+    border-radius: 4px;
+    font-size: 13.5px;
+  }
+  .warnings strong { color: var(--amber); }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  @media print {
+    body { padding: 24px; background: white; }
+    .copy-btn { display: none; }
+    .pick { box-shadow: none; page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="doc-head">
+  <p class="eyebrow">Outreach drafts</p>
+  <h1>{{COMPANY}} -- {{ROLE}}</h1>
+  <p class="meta">{{CANDIDATE_NAME}} -- prepared {{DATE}} -- <a href="{{JD_URL}}">JD</a>{{REPORT_LINK}}</p>
+</header>
+
+{{BANNER}}
+
+<div class="send-order">
+  <strong>Send order:</strong> {{SEND_ORDER}}
+</div>
+
+<div class="checklist">
+  <h4>Send checklist</h4>
+  <ul>{{CHECKLIST_ITEMS}}</ul>
+</div>
+
+{{PERSONAS_HTML}}
+
+<footer>
+  Generated by <code>career-finder outreach</code>. Drafts only -- review before sending. Hard rule: never auto-send.
+</footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const targetId = btn.getAttribute('data-target');
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      const text = el.getAttribute('data-raw') || el.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        const original = btn.textContent;
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.classList.remove('copied');
+        }, 1400);
+      } catch (e) {
+        btn.textContent = 'Copy failed';
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

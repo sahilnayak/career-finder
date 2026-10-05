@@ -1,0 +1,3 @@
+# NEVER-APPLY LIST: real employers the user has explicitly ruled out.
+# One case-insensitive substring per line, matched against the company name.
+# Add entries ONLY on the user's explicit instruction. Enforced via loadNoise() in scripts/role-filters.mjs.

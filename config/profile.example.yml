@@ -1,0 +1,168 @@
+# career-finder profile
+# Onboarding writes config/profile.yml from your resume; this file shows every field.
+# To set up by hand: copy to config/profile.yml and replace the placeholder candidate below.
+# This is the single source of truth for WHO you are, WHAT roles you want and WHERE.
+# No script hard-codes a role or a city: they all read the targets/location/pipeline/outreach
+# blocks through scripts/targets.mjs.
+
+candidate:
+  full_name: "Jane Doe"
+  email: "jane.doe@example.com"
+  phone: "+1-555-555-0100"
+  location: "Chicago, IL"
+  years: 5                 # years of relevant experience; gates entry-level titles and YOE asks
+  linkedin: "https://www.linkedin.com/in/janedoe-example/"
+  portfolio_url: ""
+  github: ""
+  twitter: ""
+  # canva_resume_design_id: "DAxxxxxxxxx"   # optional, for visual CV generation
+
+# ── TARGETS: what the pipeline searches for and filters on ─────────────────────────────────
+targets:
+  # Titles to search for on LinkedIn / HiringCafe and to accept in ATS sweeps. Keep it short
+  # (3-6). Each phrase matches case-, space- and hyphen-insensitively.
+  roles:
+    - "Data Engineer"
+    - "Analytics Engineer"
+    - "Data Platform Engineer"
+  # Extra phrases that also mark a title as on-target (recognized, but not searched for).
+  title_keywords:
+    - "ETL Engineer"
+    - "Big Data Engineer"
+    - "Data Infrastructure"
+  # Phrases that drop a title before scoring. A plain negative is NEUTRALIZED when a positive
+  # is also present ("Snowflake" drops "Snowflake Administrator" but not "Data Engineer, Snowflake").
+  # Prefix with "!" for a HARD gate that always drops (seniority/level gates).
+  title_negatives:
+    - "!director"
+    - "!vp"
+    - "!head of"
+    - "!intern"
+    - "manager"
+    - "analyst"
+    - "scientist"
+    - "sales"
+    - "recruiter"
+  # The role the daily primary_quota counts. Defaults to roles[0].
+  primary_role: "Data Engineer"
+  # Your level, used by evaluation (e.g. "junior", "mid", "senior", "staff").
+  seniority: "mid"
+  # Keep manager/director/lead/head titles? Defaults to true when any role above contains one
+  # of those words. A title that matches a target role is never dropped for being management.
+  include_management: false
+  # Industry/company words you will not work for. Case-insensitive substring on company + title.
+  dealbreakers:
+    - "gambling"
+    - "tobacco"
+
+# Archetypes help the evaluation system score fit (primary = dream role, secondary = good fit,
+# adjacent = stretch).
+target_roles:
+  primary:
+    - "Data Engineer"
+    - "Senior Data Engineer"
+  archetypes:
+    - name: "Data Engineer"
+      level: "Mid/Senior"
+      fit: "primary"
+    - name: "Analytics Engineer"
+      level: "Mid"
+      fit: "secondary"
+    - name: "Data Platform Engineer"
+      level: "Mid/Senior"
+      fit: "adjacent"
+
+# ── LOCATION: where the pipeline looks ─────────────────────────────────────────────────────
+location:
+  metro: "Chicago Metro"          # label used in logs and prompts
+  city: "Chicago"
+  state: "IL"                      # 2-letter (US) or full name
+  country: "United States"
+  lat: 41.8781                     # search center (HiringCafe radius search)
+  lng: -87.6298
+  radius_mi: 50
+  linkedin_geo_id: ""              # LinkedIn geoId for the metro. Onboarding resolves it (li-geo.mjs);
+                                   # blank = free-text "City, ST, Country" fallback (looser geocoding)
+  # onsite         = local in-office only, reject remote
+  # hybrid         = local hybrid/onsite, reject fully remote
+  # remote-country = local roles PLUS remote roles open to your country (and your state)
+  # any            = local roles PLUS any remote role
+  remote_policy: "remote-country"
+  # Every place name that counts as "local". Location strings are matched by substring.
+  cities:
+    - "Chicago"
+    - "Evanston"
+    - "Oak Brook"
+    - "Schaumburg"
+    - "Naperville"
+  timezone: "America/Chicago"      # IANA zone; falls back to $CAREER_FINDER_TZ, then the system zone
+  visa_status: "No sponsorship needed"
+
+# ── PIPELINE: the morning run's bar and quota ──────────────────────────────────────────────
+pipeline:
+  qualify_score: 4.3     # a job "qualifies" at or above this score (out of 5)
+  daily_quota: 3         # qualifiers wanted on the board each morning
+  primary_quota: 1       # how many of those must be the primary_role
+  window_hours: 24       # the board shows only jobs found within this many hours
+  scan_window_days: 7    # ATS sweeps keep postings published within this many days
+  hiringcafe_days: 7     # HiringCafe search window, in days
+  max_yoe_over: 2        # drop postings asking more than candidate.years + this many years
+
+# ── DISCOVERY: your own seed list of companies to watch (optional) ─────────────────────────
+discovery:
+  seed_companies:
+    # Each entry is either a bare company name, or {company, careers_url}.
+    - "Acme Analytics"
+    - company: "Example Corp"
+      careers_url: "https://jobs.ashbyhq.com/example"
+
+# ── INTEGRATIONS ────────────────────────────────────────────────────────────────────────────
+integrations:
+  # LinkedIn JOB lanes, ON by default. The morning run starts the debug Chrome itself and runs
+  # three past-24h searches (crawl, faceted, semantic; f_TPR=r86400) for each of the first 4
+  # targets.roles. Jobs pages only: never profiles, people search, connects or messages.
+  # Remote: all three searches use the LOCAL geo; when location.remote_policy is remote-country
+  # or any, ONE extra faceted search per role adds the country geoId + f_WT=2 (remote facet).
+  # Daily `jobsearch` budget (scripts/li-budget.mjs, the single source) is derived from this:
+  #   per role = linkedin_pages (crawl) + 1 faceted + 1 semantic (+1 remote faceted)
+  #   cap/day  = 2 x 4 roles x per-role + 20 Apply-href rescues
+  #   default (2 pages, onsite) = 2 x 4 x 4 + 20 = 52/day; remote-country = 60/day.
+  # The 2x is headroom for one full manual re-run. Check usage: `node scripts/li-budget.mjs status`.
+  # Needs a one-time login: `npm run linkedin:login`. Logged out = the lane is reported FAILED,
+  # never silently skipped. Pause everything with `npm run linkedin:off` (data/LINKEDIN_OFF).
+  linkedin: true
+  linkedin_pages: 2      # result pages (25 cards each) per crawl search; 1-4, each page is budgeted
+  gmail: false           # read-only Gmail lanes (job alerts, reply detection)
+
+# ── OUTREACH: draft-only email / LinkedIn notes (nothing is ever sent automatically) ─────────
+outreach:
+  sender_name: "Jane Doe"
+  sender_email: "jane.doe@example.com"
+  # One sentence that bridges your background to the role, used in every email.
+  bridge: "I'm a data engineer with 5 years building batch and streaming pipelines for analytics teams."
+  # Three proof bullets used by default in every email. Each should carry a number.
+  default_bullets:
+    - "Rebuilt a nightly ETL into incremental dbt models, cutting warehouse cost 35%."
+    - "Built a Kafka-to-Snowflake streaming pipeline handling 2M events/day at under 5 minutes latency."
+    - "Owned data quality checks across 120 tables, dropping broken-dashboard tickets by half."
+
+narrative:
+  headline: "Data Engineer building reliable pipelines for analytics teams"
+  exit_story: "Five years turning messy operational data into trusted warehouse models; looking for a team where data is the product."
+  superpowers:
+    - "SQL and dbt modeling at warehouse scale"
+    - "Streaming ingestion (Kafka, Spark Structured Streaming)"
+    - "Data quality and observability"
+  proof_points:
+    - name: "Incremental ETL rebuild"
+      url: ""
+      hero_metric: "35% lower warehouse spend"
+
+compensation:
+  target_range: "$140K-170K"
+  currency: "USD"
+  minimum: "$125K"
+  location_flexibility: "Hybrid up to 3 days in office"
+
+# language:
+#   modes_dir: modes/de     # only for non-English job searches
