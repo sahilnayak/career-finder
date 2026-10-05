@@ -287,7 +287,7 @@ console.log('\n7. Absolute path check');
 // scripts kept alongside a generated deck in output/micro-demos/script-src/.
 // This check is about SYSTEM-layer code being portable.
 const absPathResult = run(
-  `git grep -n "/Users/" -- '*.mjs' '*.sh' '*.md' '*.go' '*.yml' 2>/dev/null | grep -v README.md | grep -v LICENSE | grep -v CLAUDE.md | grep -v scripts/test-all.mjs | grep -v '^interview-prep/' | grep -v '^learning/' | grep -v '^output/'`
+  `git grep -n "/Users/" -- '*.mjs' '*.sh' '*.md' '*.go' '*.yml' 2>/dev/null | grep -v README.md | grep -v LICENSE | grep -v CLAUDE.md | grep -v scripts/test-all.mjs | grep -v '^interview-prep/' | grep -v '^learning/' | grep -v '^output/' | grep -v '/Users/YOU'`
 );
 if (!absPathResult) {
   pass('No absolute paths in code files');
