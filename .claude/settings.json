@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && node \"$CLAUDE_PROJECT_DIR\"/scripts/pipeline-owed.mjs 2>/dev/null | jq -Rs '{hookSpecificOutput:{hookEventName:\"SessionStart\",additionalContext:.}}'",
+            "timeout": 20,
+            "statusMessage": "Checking owed pipeline artifacts for qualifiers"
+          },
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && node \"$CLAUDE_PROJECT_DIR\"/scripts/daily-quota.mjs 2>/dev/null | jq -Rs '{hookSpecificOutput:{hookEventName:\"SessionStart\",additionalContext:.}}'",
+            "timeout": 20,
+            "statusMessage": "Checking daily board quota (from config/profile.yml)"
+          },
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && node \"$CLAUDE_PROJECT_DIR\"/scripts/outreach-queue.mjs awaiting 2>/dev/null | jq -Rs '{hookSpecificOutput:{hookEventName:\"SessionStart\",additionalContext:.}}'",
+            "timeout": 20,
+            "statusMessage": "Checking qualifiers awaiting an outreach decision"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && node \"$CLAUDE_PROJECT_DIR\"/scripts/outreach-review-hook.mjs",
+            "timeout": 15,
+            "statusMessage": "Outreach generated -> queueing review"
+          }
+        ]
+      }
+    ]
+  }
+}
