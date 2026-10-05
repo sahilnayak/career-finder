@@ -1,5 +1,7 @@
 # Mode: offers — Multi-Offer Comparison
 
+> Interactive only: no scheduled lane runs this mode.
+
 Scoring matrix of 10 weighted dimensions:
 
 | Dimension | Weight | Criteria 1-5 |

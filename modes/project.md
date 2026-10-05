@@ -1,5 +1,7 @@
 # Mode: project — Portfolio Project Evaluation
 
+> Interactive only: no scheduled lane runs this mode.
+
 Scoring across 6 dimensions (1-5):
 
 | Dimension | Weight | 5 = ... | 1 = ... |

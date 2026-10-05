@@ -1,5 +1,7 @@
 # Mode: orchestrator — Discovery Orchestrator + Real-Time Job Search
 
+> Interactive only: no scheduled lane runs this mode.
+
 The scaled version of `discover`: launch a swarm of WebSearch discovery agents to find companies in the configured area, grow
 the index, sweep their career pages (zero-token ATS APIs + a browser tail), score ≥ qualify_score, and iterate until a fresh
 qualifier is found.
@@ -36,15 +38,15 @@ the tail — LinkedIn (login) + non-ATS custom career pages.
 - **Directory:** Built In (your metro) · Levels.fyi · Wellfound · workatastartup
 
 ## Cadence (real-time ≈ frequent passes)
-Autonomous zero-token core on launchd (1×/day in the morning, local time + the daily crawl, already wired). Browser tail via an in-session
+Autonomous zero-token core in the scheduled daily run (`morning.mjs`, once each morning, local time). Browser tail via an in-session
 `/loop`. A newly-found company's board is swept immediately on merge.
 
 ## Cost (honest)
 Each agent is a full Claude session (WebSearch-heavy). Default cap **8 agents × 3 passes** per run; stop at target
 or cap and report. The ATS sweep + zero-token core are free.
 
-## Auto-outreach on qualify (UNSKIPPABLE)
-After this run updates `qualifiers.tsv`, run `node scripts/outreach-owed.mjs`. For every ≥ qualify_score job it lists,
-run the `outreach` flow (JD-anchored gold/silver/bronze, draft-only, log `pending`). Never skip. If the
-logged-in browser isn't available for contact discovery, the job stays "owed" and is drained next browser
-session. Policy: `modes/_profile.md` → "Auto-outreach on qualify". Sending stays gated on user review.
+## Outreach on qualify (eligible, not owed)
+A job at or above `pipeline.qualify_score` is **eligible** for outreach, not owed. Do not draft outreach
+from this mode, interactive or headless. The user picks jobs with `w` on the dashboard or
+`node scripts/outreach-queue.mjs add`; drafting stays draft-only and sending is always the user's call.
+`node scripts/outreach-owed.mjs` is a read-only "awaiting" view. Policy: `modes/_profile.md` -> "Outreach on qualify".

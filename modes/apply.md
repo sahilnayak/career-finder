@@ -1,16 +1,18 @@
 # Mode: apply — Live Application Assistant
 
-Interactive mode for when the candidate is filling out an application form in Chrome. Reads what's on screen, loads the prior context for the offer, and generates personalized answers for each form question.
+> Interactive only: no scheduled lane runs this mode.
+
+Interactive mode for when the candidate is filling out an application form in a browser. Reads what's on screen, loads the prior context for the offer, and generates personalized answers for each form question.
 
 ## Requirements
 
-- **Best with visible Playwright**: In visible mode, the candidate sees the browser and Claude can interact with the page.
-- **Without Playwright**: the candidate shares a screenshot or pastes the questions manually.
+- **With a browser tool** (any browser MCP available in this session: Chrome DevTools, Playwright, Claude in Chrome, or similar): read the page the candidate has open. Runs in the main session, never a subagent, and never clicks Submit.
+- **Without a browser tool**: the candidate shares a screenshot or pastes the questions manually.
 
 ## Workflow
 
 ```
-1. DETECT     → Read the active Chrome tab (screenshot/URL/title)
+1. DETECT     → Read the active browser tab (screenshot/URL/title)
 2. IDENTIFY   → Extract company + role from the page
 3. SEARCH     → Match against existing reports in reports/
 4. LOAD       → Read the full report + Section G (if present)
@@ -22,9 +24,9 @@ Interactive mode for when the candidate is filling out an application form in Ch
 
 ## Step 1 — Detect the offer
 
-**With Playwright:** Take a snapshot of the active page. Read the title, URL, and visible content.
+**With a browser tool:** Take a snapshot of the active page. Read the title, URL, and visible content.
 
-**Without Playwright:** Ask the candidate to:
+**Without a browser tool:** Ask the candidate to:
 - Share a screenshot of the form (the Read tool can read images)
 - Or paste the form questions as text
 - Or give the company + role so we can look it up

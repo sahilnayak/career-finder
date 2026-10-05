@@ -1,5 +1,7 @@
 # Mode: deep — Deep Research Prompt
 
+> Interactive only: no scheduled lane runs this mode.
+
 Generates a structured prompt for Perplexity/Claude/ChatGPT with 6 axes:
 
 ```

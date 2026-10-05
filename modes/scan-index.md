@@ -1,5 +1,7 @@
 # Mode: scan-index — Zero-Token Company-Index Sweep
 
+> Runs automatically in: daily (`ats:index`, `ats:primary-watchlist`), speed (opt-in) and hot (opt-in).
+
 Sweeps the growing company index (`data/company-index.tsv`) via ATS APIs (zero token), filters to
 the `targets.roles` title family + the configured `location` / `remote_policy` + recency, dedups against history, and emits
 fresh candidates for the `offer` scoring loop. Pairs with `scan-web` (browser comb + discovery).
@@ -7,8 +9,13 @@ fresh candidates for the `offer` scoring loop. Pairs with `scan-web` (browser co
 ## Commands
 - **Grow the index:** `node scripts/build-company-index.mjs [--dry-run]` — seeds/grows `company-index.tsv` from
   `scan-history.tsv` ATS boards + a curated list; idempotent (append new, skip existing).
-- **Sweep:** `node scripts/scan-index.mjs [--days N] [--dry-run]` — default `--days 1` (today, local time); use 2–3
-  for a 48–72h window. Parallel, zero-token.
+- **Sweep:** `node scripts/scan-index.mjs [--days N | --hours H] [--out FILE] [--dry-run]` — default `--days`
+  is `pipeline.scan_window_days`; `--hours H` is a rolling window that overrides `--days` (speed mode uses
+  `--hours 12`). Parallel, zero-token.
+- **Primary watchlist:** `node scripts/scan-index.mjs --only data/primary-watchlist.tsv --primary-only --hours 72
+  --out data/_candidates-primary.tsv` — re-sweeps only employers that have posted the primary role before,
+  for the primary role only. Daily lane `ats:primary-watchlist`; skipped while the watchlist is empty (it
+  fills as the primary role gets scored).
 - Both reuse `scripts/scan-core.mjs` (`detectApi`, `PARSERS`, `buildTitleFilter`, `buildLocationFilter`,
   `loadSeenUrls`, recency). `scan.mjs` is unchanged.
 
@@ -36,8 +43,8 @@ later canonical-JD re-score put < qualify_score and backfills `found_at` for orp
 `build-company-index.mjs` (YC directory, Built In (your metro), Levels.fyi, VC portfolios) and by appending companies
 discovered during `scan-web` browser combs.
 
-## Auto-outreach on qualify (UNSKIPPABLE)
-After this run updates `qualifiers.tsv`, run `node scripts/outreach-owed.mjs`. For every ≥ qualify_score job it lists,
-run the `outreach` flow (JD-anchored gold/silver/bronze, draft-only, log `pending`). Never skip. If the
-logged-in browser isn't available for contact discovery, the job stays "owed" and is drained next browser
-session. Policy: `modes/_profile.md` → "Auto-outreach on qualify". Sending stays gated on user review.
+## Outreach on qualify (eligible, not owed)
+A job at or above `pipeline.qualify_score` is **eligible** for outreach, not owed. Do not draft outreach
+from this mode, interactive or headless. The user picks jobs with `w` on the dashboard or
+`node scripts/outreach-queue.mjs add`; drafting stays draft-only and sending is always the user's call.
+`node scripts/outreach-owed.mjs` is a read-only "awaiting" view. Policy: `modes/_profile.md` -> "Outreach on qualify".

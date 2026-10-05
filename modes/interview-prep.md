@@ -1,5 +1,9 @@
 # Mode: interview-prep — Company-Specific Interview Intelligence
 
+> Interactive only: no scheduled lane runs this mode.
+
+For answering or rehearsing a single generic question ("why this company", "tell me about yourself", strengths/weaknesses), delegate to the `interview-answers` skill instead of this mode.
+
 When the user asks to prep for an interview at a specific company+role, or when an evaluation scores 4.0+ and the user updates status to `Interview`, run this mode.
 
 ## Inputs

@@ -3,7 +3,7 @@ name: career-finder
 description: AI job search command center -- evaluate offers, generate CVs, scan portals, track applications
 user_invocable: true
 args: mode
-argument-hint: "[scan | scan-web | scan-index | discover | orchestrator | speed | deep | pdf | offer | offers | apply | batch | tracker | qualifiers | scored | catalog | feedback | pipeline | contact | outreach | training | project | interview-prep | dashboard | update]"
+argument-hint: "[scan | scan-web | scan-index | discover | orchestrator | speed | deep | pdf | offer | offers | apply | batch | tracker | qualifiers | scored | catalog | feedback | pipeline | contact | outreach | training | project | interview-prep | dashboard | patterns | followup | hunt | setup | update]"
 ---
 
 # career-finder -- Router
@@ -19,38 +19,44 @@ thresholds from `config/profile.yml`; never assume a role family, metro or score
 
 Determine the mode from `{{mode}}`:
 
-| Input | Mode |
-|-------|------|
-| (empty / no args) | `discovery` -- Show command menu |
-| JD text or URL (no sub-command) | **`auto-pipeline`** |
-| `offer` | `offer` |
-| `offers` | `offers` |
-| `contact` | `contact` |
-| `outreach` | `outreach` |
-| `deep` | `deep` |
-| `pdf` | `pdf` |
-| `training` | `training` |
-| `project` | `project` |
-| `tracker` | `tracker` |
-| `pipeline` | `pipeline` |
-| `apply` | `apply` |
-| `scan` | `scan` |
-| `scan-web` | `scan-web` |
-| `scan-index` | `scan-index` |
-| `discover` | `discover` |
-| `orchestrator` | `orchestrator` |
-| `speed` | `speed` |
-| `batch` | `batch` |
-| `patterns` | `patterns` |
-| `followup` | `followup` |
-| `dashboard` | `dashboard` |
-| `qualifiers` | `qualifiers` |
-| `scored` | `scored` |
-| `catalog` | `catalog` |
-| `feedback` | `feedback` |
-| `interview-prep` | `interview-prep` |
-| `setup` / `onboard` | run the `career-finder-onboarding` skill |
-| `hunt` | delegate to the `hunt` agent (`.claude/agents/hunt.md`) |
+| Input | Mode | Automation (morning.mjs lanes) |
+|-------|------|------|
+| (empty / no args) | `discovery` -- Show command menu | — |
+| JD text or URL (no sub-command) | **`auto-pipeline`** | scoring lanes use the rubric; full flow interactive-only |
+| `offer` | `offer` | `score`, `hot:score`, `keep-search:score`, `reports` (rubric) |
+| `offers` | `offers` | interactive-only |
+| `contact` | `contact` | interactive-only |
+| `outreach` | `outreach` | `outreach-bullets`, `verify-outreach`, digest awaiting count; drafting interactive-only |
+| `deep` | `deep` | interactive-only |
+| `pdf` | `pdf` | interactive-only (no auto-PDF lane) |
+| `training` | `training` | interactive-only |
+| `project` | `project` | interactive-only |
+| `tracker` | `tracker` | `merge-tracker`, `reconcile` (daily); viewing interactive-only |
+| `pipeline` | `pipeline` | `score`, `hot:score`, `keep-search:score`, `near-miss`, `reports` (daily), `snapshot-jd`, `backfill-reports`, `pipeline-owed` |
+| `apply` | `apply` | interactive-only |
+| `scan` | `scan` | `scan`, hiringcafe, workable, browser-boards, probe-ats, resolve-nominations, web-roles clean/archive/learn (daily) |
+| `scan-web` | `scan-web` | `websearch` (daily, §Headless only); browser comb interactive-only |
+| `scan-index` | `scan-index` | `ats:index`, `ats:primary-watchlist` (daily); speed + hot (opt-in) |
+| `discover` | `discover` | `discover` (daily, §Headless only) + `discover-companies --yc` fan-in |
+| `orchestrator` | `orchestrator` | interactive-only |
+| `speed` | `speed` | speed mode (opt-in `--with-speed`); `/loop` interactive-only |
+| `batch` | `batch` | interactive-only |
+| `patterns` | `patterns` | interactive-only |
+| `followup` | `followup` | digest overdue count (daily); drafting interactive-only |
+| `dashboard` | `dashboard` | `dashboard:build` (daily); TUI interactive-only |
+| `qualifiers` | `qualifiers` | interactive-only |
+| `scored` | `scored` | interactive-only |
+| `catalog` | `catalog` | interactive-only |
+| `feedback` | `feedback` | `outcomes` (daily, loads §Outcomes (headless)), `feedback-outcomes --learn` |
+| `interview-prep` | `interview-prep` | interactive-only |
+| `setup` / `onboard` | run the `career-finder-onboarding` skill | interactive-only |
+| `hunt` | delegate to the `hunt` agent (`.claude/agents/hunt.md`) | interactive-only |
+
+Lane modes: **daily** is ON by default (`scripts/schedule.mjs install`; launchd on macOS, crontab on Linux, Windows documented only). **speed** (`--with-speed`, 2-4/day) and **hot** (`--with-hot`, every 30-60 min, default 60) are opt-in. LinkedIn logged-in lanes run in daily only, never speed or hot. No scheduled lane ever drafts outreach: qualifiers are eligible, not owed.
+
+**Delegated skills (not sub-commands):**
+- A single interview question to answer or rehearse ("why this company", "tell me about yourself") → the `interview-answers` skill.
+- Non-English postings, or `language.modes_dir` set in `config/profile.yml` → the `career-finder-language-modes` skill; load mode files from that directory instead of `modes/`.
 
 **Auto-pipeline detection:** If `{{mode}}` is not a known sub-command AND contains JD text (keywords: "responsibilities", "requirements", "qualifications", "about the role", "we're looking for", company name + role) or a URL to a JD, execute `auto-pipeline`.
 
@@ -117,7 +123,7 @@ Read `modes/{mode}.md`
 Applies to: `tracker`, `deep`, `training`, `project`, `patterns`, `followup`, `dashboard`, `qualifiers`, `scored`, `catalog`, `feedback`, `interview-prep`
 
 ### Modes delegated to subagent:
-For `scan`, `apply` (with Playwright), and `pipeline` (3+ URLs): launch as Agent with the content of `_shared.md` + `modes/{mode}.md` injected into the subagent prompt.
+For `scan` and `pipeline` (3+ URLs): launch as Agent with the content of `_shared.md` + `modes/{mode}.md` injected into the subagent prompt.
 
 ```
 Agent(
@@ -126,5 +132,7 @@ Agent(
   description="career-finder {mode}"
 )
 ```
+
+`apply` always runs in the main session (browser tools do not reach subagents) and works with any available browser MCP, or with pasted questions/screenshots.
 
 Execute the instructions from the loaded mode file.

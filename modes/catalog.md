@@ -1,5 +1,7 @@
 # career-finder — catalog mode
 
+> Interactive only: no scheduled lane runs this mode.
+
 Regenerate and surface `data/INDEX.md`: one referenceable row per job, joining the structured
 files so any job's score / status / report / outreach / JD is a single lookup away (no RAG needed).
 

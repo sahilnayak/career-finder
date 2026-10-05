@@ -1,5 +1,7 @@
 # Mode: discover — Company Discovery Agent + Recurring Pipeline
 
+> Runs automatically in: daily (`discover` lane, §Headless only, plus the `discover-companies --yc` fan-in). Swarm and browser top-up are interactive only.
+
 Grows `data/company-index.tsv` with companies in the configured area (the "company discovery agent"), then the recurring
 pipeline scans + scores them. **Hybrid:** zero-token core (autonomous) + browser top-ups (local sessions).
 
@@ -7,8 +9,8 @@ pipeline scans + scores them. **Hybrid:** zero-token core (autonomous) + browser
 - `scripts/discover-companies.mjs` — zero-token discovery: built-in curated ATS boards + `--from <file>`
   (merges an external `company\tcareers_url` list) + optional YC (`YC_ALGOLIA_KEY`). Runs `detectApi`, appends new
   rows to `company-index.tsv` (dedup). Reuses `scan-core.mjs`.
-- `scripts/run-pipeline.mjs --days N` — one autonomous pass: `discover-companies` (merges
-  `data/_discovered-companies.tsv` if present) → `scan-index --out data/_candidates.tsv`.
+- `scripts/morning.mjs --mode daily` lanes `discover-companies` (merges `data/_discovered-companies.tsv`
+  if present) and `ats:index` (`scan-index --hours N --out data/_candidates.tsv`).
 - **Background company-finder agent** (`Agent` tool, a worker model): crawls the live web (YC, Built In (your metro),
   Levels.fyi, VC portfolios, general search) → appends `company\tcareers_url` to `data/_discovered-companies.tsv`.
 - **Browser top-up** (this mode, local): drive playwright-stealth / chrome-devtools over LinkedIn company search,
@@ -18,8 +20,8 @@ pipeline scans + scores them. **Hybrid:** zero-token core (autonomous) + browser
 
 ## Recurring + escalation loop (strict 24h)
 Two layers:
-1. **Autonomous core (launchd, laptop-on):** `com.careerfinder.pipeline` runs `scripts/pipeline-cron.sh` at
-   the times set in the launchd plist (local time) → `node scripts/run-pipeline.mjs --days 1` (strict today, zero-token) + headless `claude` scoring.
+1. **Autonomous core (scheduled daily run):** `node scripts/morning.mjs` (installed by `scripts/schedule.mjs`,
+   launchd on macOS, crontab on Linux) runs the `discover` lane (see §Headless), the ATS sweeps and headless scoring.
 2. **In-session escalation `/loop` (browser):** when a run is **short of `pipeline.daily_quota` qualifiers**, escalate — open
    the browser and keep discovering NEW companies that posted in the **last 24h**, index them, re-sweep, score.
    **Never widen the window; expand companies instead.**
@@ -54,7 +56,7 @@ Per pass:
 
 ### Start the loop
 `/loop /career-finder discover` (self-paced) or `/loop 6h /career-finder discover`. Runs the escalation in-session a few
-times/day (browser available); the launchd job covers strict-24h zero-token when no session is open.
+times/day (browser available); the scheduled daily run (`morning.mjs`) covers strict-24h zero-token when no session is open.
 
 ## Results file (ask Claude for contents)
 `data/qualifiers.tsv` — `date, company, role, score, why, url, source`. The user asks "what are my new
@@ -65,8 +67,23 @@ qualifiers?" → read it and summarize. `data/qualifiers.md` is the human-readab
 scan-history/pipeline/applications, ≥ qualify_score `offer` bar. Discovery yield depends on each source's reachability;
 the index grows every run ("keep adding to it").
 
-## Auto-outreach on qualify (UNSKIPPABLE)
-After this run updates `qualifiers.tsv`, run `node scripts/outreach-owed.mjs`. For every ≥ qualify_score job it lists,
-run the `outreach` flow (JD-anchored gold/silver/bronze, draft-only, log `pending`). Never skip. If the
-logged-in browser isn't available for contact discovery, the job stays "owed" and is drained next browser
-session. Policy: `modes/_profile.md` → "Auto-outreach on qualify". Sending stays gated on user review.
+## Outreach on qualify (eligible, not owed)
+A job at or above `pipeline.qualify_score` is **eligible** for outreach, not owed. Do not draft outreach
+from this mode, interactive or headless. The user picks jobs with `w` on the dashboard or
+`node scripts/outreach-queue.mjs add`; drafting stays draft-only and sending is always the user's call.
+`node scripts/outreach-owed.mjs` is a read-only "awaiting" view. Policy: `modes/_profile.md` -> "Outreach on qualify".
+
+## Headless
+
+Loaded by the `discover` lane of `scripts/morning.mjs` (daily only, once a day). Only this section applies
+there; the prompt supplies roles, area, the cap (25) and the output columns inline, and those override
+anything above.
+
+- WebSearch + WebFetch only. No browser MCP, no LinkedIn, no subagents, no swarm.
+- Find NEW companies with a public ATS board (Greenhouse, Ashby, Lever, Workable, SmartRecruiters, Workday)
+  hiring the target roles. Skip boards already in `data/company-index.tsv` (column 3) or
+  `data/_discovered-companies.tsv`, and anything in `data/_speed-noise.txt` or `data/_never-apply.txt`.
+- Verify identity: an ATS can return 200 for a nonsense slug, so confirm the company name on the page.
+- Append verified finds to `data/_discovered-companies.tsv` only (company, board URL). The fan-in
+  (`discover-companies.mjs --yc`, `probe-ats`) indexes and sweeps them; this lane does not score.
+- Never draft outreach. End with the one summary line the prompt asks for.

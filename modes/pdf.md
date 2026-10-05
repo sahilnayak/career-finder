@@ -1,5 +1,7 @@
 # Mode: pdf — ATS-Optimized PDF Generation
 
+> Interactive only: no scheduled lane runs this mode. There is no auto-PDF lane; resumes are generated on request (or by the interactive auto-pipeline / speed `/loop`).
+
 ## Full pipeline
 
 1. Read `cv.md` as the source of truth

@@ -1,5 +1,7 @@
 # Mode: offer — Full A-G Evaluation
 
+> Runs automatically in: the scoring lanes (`score`, `hot:score`, `keep-search:score`, `reports`) use this rubric.
+
 When the candidate pastes an offer (text or URL), ALWAYS deliver the 7 blocks (A-F evaluation + G legitimacy):
 
 ## Step 0 — Archetype Detection

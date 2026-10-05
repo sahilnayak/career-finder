@@ -1,5 +1,7 @@
 # Mode: contact -- LinkedIn Power Move
 
+> Interactive only: no scheduled lane runs this mode.
+
 1. **Identify targets** via WebSearch:
    - Hiring manager of the team
    - Assigned recruiter

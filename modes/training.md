@@ -1,5 +1,7 @@
 # Mode: training — Training Evaluation
 
+> Interactive only: no scheduled lane runs this mode.
+
 For each course/cert the candidate asks about, evaluate 6 dimensions:
 
 | Dimension | What it evaluates |

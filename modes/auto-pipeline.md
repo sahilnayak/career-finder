@@ -1,5 +1,7 @@
 # Mode: auto-pipeline — Full Automatic Pipeline
 
+> Runs automatically in: the scoring lanes apply the same rubric; the full JD-in flow (report + PDF + tracker) is interactive only.
+
 When the user pastes a JD (text or URL) without an explicit sub-command, run the ENTIRE pipeline in sequence:
 
 ## Step 0 — Extract JD

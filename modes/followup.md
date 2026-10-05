@@ -1,5 +1,7 @@
 # Mode: followup -- Follow-up Cadence Tracker
 
+> Runs automatically in: daily (digest overdue count only). Drafting follow-ups is interactive only.
+
 ## Purpose
 
 Track follow-up cadence for active applications. Flag overdue follow-ups, extract contacts from notes, and generate tailored follow-up email/LinkedIn drafts using report context.

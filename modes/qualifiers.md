@@ -1,5 +1,7 @@
 # Mode: qualifiers — View Qualified Jobs (score ≥ qualify_score)
 
+> Interactive only: no scheduled lane runs this mode.
+
 Show the roles that passed the `offer` bar (score ≥ qualify_score) from `data/qualifiers.tsv`, with scores + clickable links.
 
 ## Run

@@ -1,5 +1,7 @@
 # Mode: scan — Portal Scanner (Offer Discovery)
 
+> Runs automatically in: daily (`scan`, hiringcafe, workable, browser-boards, probe-ats, resolve-nominations, web-roles clean/archive/learn).
+
 Scans configured job portals, filters by title relevance, and adds new offers to the pipeline for later evaluation.
 
 ## Default filters (apply BEFORE the scan loop runs)
@@ -91,6 +93,17 @@ The levels are additive — they all run, results are merged and deduplicated.
   with `f_TPR=r86400&sortBy=DD`), faceted and semantic (`linkedin-jobsearch.mjs --form faceted|semantic`).
   Max 12 searches/day, budgeted by `li-budget.mjs`; jobs pages only; `data/LINKEDIN_OFF` stops it.
   Logged out = FAILED lane with fix `npm run linkedin:login`. Cards are ATS-resolved before scoring.
+  Daily mode only, never speed or hot; skipped with a reason when Chrome is missing.
+- **Primary watchlist** (`scan-index.mjs --only data/primary-watchlist.tsv --primary-only --hours 72`):
+  daily, re-sweeps employers that have posted the primary role before.
+- **Portals** (`scan.mjs`): `tracked_companies` with an `api:` in `portals.yml`, daily.
+- **HiringCafe** (`hiringcafe-scan.mjs`): one server-rendered GET per search, daily. Dates are aggregator
+  claims; every hit is ATS-verified downstream.
+- **LinkedIn guest API** (`speed-linkedin.mjs --hours 24`): logged-out job cards, daily.
+- **LinkedIn job-alert emails** (`linkedin-email-alerts.mjs`): read-only Gmail, daily; never sends or labels.
+- **Browser-rendered boards** (`browser-boards.mjs`): client-rendered boards via the debug Chrome, daily,
+  skipped without Chrome.
+- **New boards / repair** (`discover-companies.mjs`, `probe-ats.mjs`): grow and fix `company-index.tsv`.
 
 Run them first; the browser/WebSearch levels below are for tracked companies they do not cover.
 

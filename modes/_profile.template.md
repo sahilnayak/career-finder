@@ -106,7 +106,9 @@ at least `pipeline.primary_quota` of them matching `targets.primary_role`. If sh
 (grow the company index, widen titles within `targets.title_keywords`); never lower
 `pipeline.qualify_score` or fake freshness. A short day is reported as short.
 
-## Auto-outreach on qualify
+## Outreach on qualify
 
-When a job clears `pipeline.qualify_score`, draft outreach for it (draft-only, never sent). A job
-stays "owed" in `scripts/outreach-owed.mjs` until drafted. Sending is always the user's call.
+A job that clears `pipeline.qualify_score` is **eligible** for outreach, not owed. Nothing drafts
+automatically, interactive or headless. Pick jobs with `w` on the dashboard or
+`node scripts/outreach-queue.mjs add`; drafts are draft-only and sending is always the user's call.
+`scripts/outreach-owed.mjs` is a read-only "awaiting" view of eligible jobs without a draft.

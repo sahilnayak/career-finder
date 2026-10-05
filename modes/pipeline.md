@@ -1,5 +1,7 @@
 # Mode: pipeline — URL Inbox (Second Brain)
 
+> Runs automatically in: daily, speed and hot (`score`, `hot:score`, `keep-search:score`, `near-miss`, `reports`, `snapshot-jd`, `backfill-reports`, `pipeline-owed`).
+
 Processes offer URLs queued in `data/pipeline.md`. The user adds URLs whenever they want and then runs `/career-finder pipeline` to process them all.
 
 ## Workflow

@@ -1,5 +1,7 @@
 # Mode: tracker — Application Tracker
 
+> Runs automatically in: daily (`merge-tracker`, `reconcile`). Viewing the tracker is interactive only.
+
 Reads and displays `data/applications.md`.
 
 **Tracker format:**

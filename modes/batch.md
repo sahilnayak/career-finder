@@ -1,5 +1,7 @@
 # Mode: batch — Bulk Offer Processing
 
+> Interactive only: no scheduled lane runs this mode.
+
 Two usage modes: **conductor --chrome** (browses portals in real time) or **standalone** (script for already-collected URLs).
 
 ## Architecture

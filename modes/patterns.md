@@ -1,5 +1,7 @@
 # Mode: patterns -- Rejection Pattern Detector
 
+> Interactive only: no scheduled lane runs this mode.
+
 ## Purpose
 
 Analyze all tracked applications to find patterns in outcomes and surface actionable insights. Identifies what's working (archetypes, remote policies, score ranges) and what's wasting time (geo-restricted roles, stack mismatches, low-score applications).

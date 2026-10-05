@@ -1,5 +1,7 @@
 # Mode: outreach -- Multi-persona Outreach Drafting (fan-out / fan-in)
 
+> Runs automatically in: daily (`outreach-bullets --bullets-only --limit 5`, `verify-outreach`, digest awaiting count). Drafting is interactive only, on jobs the user picks.
+
 All sender details come from `config/profile.yml`: `outreach.sender_name`, `outreach.sender_email`,
 `outreach.bridge` (one identity sentence for emails) and `outreach.default_bullets` (the standing
 three proof bullets). Proof points come from `cv.md` and the evaluation report only. Nothing in this
@@ -378,7 +380,7 @@ The project-wide rule in `CLAUDE.md` is to use Chrome DevTools MCP for all brows
 
 1. **Main agent scrapes serially** on the attached Chrome (:9222): run `scan-roster.mjs` for the company, then visit each chosen contact's profile to capture the observation evidence (headline, recent/hiring post, tenure, mutuals). One agent, one browser, sequential.
 2. **Then fan out one DRAFTING subagent per persona, in parallel, with NO browser access.** Pass each subagent the scraped contact data + CV + profile narrative + the report's Block B/C/F/G + the persona templates + the strict style rules + the three JD anchors (gold/silver/bronze). The subagent returns the `PersonaResult` JSON only — it does not touch any MCP/browser tool.
-3. **Main agent fans in:** assemble the top-level JSON, lint every LinkedIn draft (≤300 chars, approved CTA, no em-dashes), render via `render-outreach.mjs`, append `outreach-log.tsv` (pending/pending), and re-run `outreach-owed.mjs` to confirm 0 owed.
+3. **Main agent fans in:** assemble the top-level JSON, lint every LinkedIn draft (≤300 chars, approved CTA, no em-dashes), render via `render-outreach.mjs`, append `outreach-log.tsv` (pending/pending), and re-run `outreach-owed.mjs` to confirm 0 picked jobs still awaiting a draft.
 
 This gives the speed of parallel drafting without ever pointing two agents at the same browser. Draft only, never send.
 

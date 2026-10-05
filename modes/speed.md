@@ -1,11 +1,13 @@
 # Mode: speed — Speed-to-Lead Freshness Monitor (just-posted, ≥ qualify_score only)
 
+> Runs automatically in: speed mode, opt-in (`--with-speed`, 2-4/day). The `/loop` tier and browser supplement are interactive only.
+
 Catches the **most recently posted** matching roles and surfaces only the ≥ qualify_score fits, so you apply first. Runs
-hourly in-session (via `/loop`) and hourly via launchd. ATS-first (exact post times) + browser supplement.
+in-session via `/loop`, and on a schedule only when opted in (`--with-speed`). ATS-first (exact post times) + browser supplement.
 
 ## Per cycle
 1. **ATS sweep (exact post times):**
-   `node scripts/scan-index.mjs --hours 12 --out data/_candidates.tsv --browser-queue data/_browser-queue.tsv`
+   `node scripts/scan-index.mjs --hours 12 --out data/_candidates.tsv`
    over all indexed companies. Rolling **≤12h** window (tighten to `--hours 6`, loosen to `--hours 24`).
 2. **Browser supplement (in-session, attached Chrome):** LinkedIn guest `…&f_TPR=r43200` (12h) across high-signal
    titles (`targets.roles` from config/profile.yml) + Google
@@ -39,31 +41,27 @@ hourly in-session (via `/loop`) and hourly via launchd. ATS-first (exact post ti
    dashboard's Found panel reads `scored-jobs.tsv`, NOT `qualifiers.tsv` — a qualifier without a timestamped
    scored-jobs row is invisible on the dashboard. Then `prune-qualifiers.mjs` → `reconcile-qualifiers.mjs`
    (drops snippet false positives the canonical re-score put < qualify_score, backfills `found_at` for any orphan, keeps
-   the two ledgers in sync) → `feedback-outcomes.mjs` → show via `qualifiers-view` (newest first). For speed-to-lead, draft outreach
-   immediately on a new ≥ qualify_score (the `outreach` mode). This is UNSKIPPABLE: run `node scripts/outreach-owed.mjs`
-   and draft (JD-anchored gold/silver/bronze, draft-only) for every job it lists; a job stays "owed" until
-   drafted, so nothing is dropped if the browser is down. Policy: `modes/_profile.md` → "Auto-outreach on qualify".
+   the two ledgers in sync) → `feedback-outcomes.mjs` → show via `qualifiers-view` (newest first). A new ≥ qualify_score is
+   **eligible** for outreach, not owed: do not draft from this mode. The user picks with `w` on the dashboard or
+   `node scripts/outreach-queue.mjs add`; `node scripts/outreach-owed.mjs` is a read-only "awaiting" view.
+   Policy: `modes/_profile.md` → "Outreach on qualify".
 
-## Cadence — two tiers, ALWAYS-ON guaranteed by launchd (user-set 2026-06-10)
-- **Always-on backbone: `com.careerfinder.speed` launchd job, hourly** (`scripts/speed-cron.sh` +
-  `~/Library/LaunchAgents/com.careerfinder.speed.plist`). Zero-token sweeps (scan-index + speed-linkedin
-  guest comb, no browser needed) and, only when new signals exist, headless `claude -p` scoring with the
-  canonical-JD rule + hard-gate checklist. ≥ qualify_score → qualifiers.tsv; the report/resume/outreach steps are
-  deferred as OWED (contact discovery needs the logged-in browser) and MUST be drained at the start of the
-  next interactive session via `node scripts/outreach-owed.mjs`.
-  Disable: `launchctl unload -w ~/Library/LaunchAgents/com.careerfinder.speed.plist`.
-- **In-session crons (richer, browser-capable): hourly** — same cycle but completes the full on-qualify
-  pipeline (report + resume + outreach) in-cycle. Overlap with launchd is harmless: both dedup against
-  `scored-jobs.tsv`/`qualifiers.tsv`.
-- **Morning-quota cycle (early morning, in-session): enforce the `pipeline.daily_quota`
-  policy** in `modes/_profile.md` → "Morning quota" (check trailing 24h, escalate if short).
+## Cadence (opt-in)
+- **Scheduled speed runs are OFF by default.** Opt in with `node scripts/schedule.mjs install --with-speed N`
+  (recommended 2-4 runs/day). Each run is `node scripts/morning.mjs --mode speed`: zero-token scan-index over
+  the last 12h plus capped headless scoring. LinkedIn lanes never run in speed or hot mode (daily only).
+  Qualifiers land in `qualifiers.tsv` / `scored-jobs.tsv`; reports and resumes for them come from the daily
+  run or an interactive session. Outreach is never drafted by a scheduled run.
+- **Hot tier (opt-in):** `--with-hot` (every 30-60 min, default 60) polls `data/hot-companies.tsv` only.
+- **In-session `/loop` (interactive only, browser-capable):** the same cycle plus the browser supplement and,
+  for each new qualifier, report + tracker TSV + merge-tracker + resume PDF. Dedup against
+  `scored-jobs.tsv`/`qualifiers.tsv` makes overlap with scheduled runs harmless.
+- **Morning quota:** the daily run enforces `pipeline.daily_quota` (see `modes/_profile.md` → "Morning quota").
 
-The launchd job grows the index autonomously between sessions, so each speed cycle sweeps a bigger universe
-over time. On every new ≥ qualify_score: **full evaluation report (Blocks A–G per `modes/offer.md`, numbered, in
-`reports/`) + tracker TSV + merge-tracker + resume PDF + outreach drafts, all in the same cycle** (policies
-in `_profile.md`), then `node scripts/outreach-owed.mjs` must report 0 owed before the cycle logs itself.
-The one-line `why` in `scored-jobs.tsv` is triage, not the evaluation — **the report IS the evaluation**;
-a qualifier without a report is incomplete (dashboard `⏎` drill-in opens the report via `applications.md`).
+On every new ≥ qualify_score in an interactive cycle: **full evaluation report (Blocks A–G per
+`modes/offer.md`, numbered, in `reports/`) + tracker TSV + merge-tracker + resume PDF**. The one-line `why` in
+`scored-jobs.tsv` is triage, not the evaluation — **the report IS the evaluation**; a qualifier without a report
+is incomplete (dashboard `⏎` drill-in opens the report via `applications.md`).
 
 ## Improvement loop
 Every cycle: append **each scored role (any score)** to `data/scored-jobs.tsv` **with a precise ISO `found_at`**

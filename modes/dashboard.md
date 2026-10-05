@@ -1,5 +1,7 @@
 # career-finder — dashboard mode
 
+> Runs automatically in: daily (`dashboard:build`). The TUI is interactive only.
+
 Launch the career-finder TUI dashboard in a new Terminal window (macOS).
 
 The dashboard is a bubbletea Go binary at `dashboard/career-dashboard`. It's a TUI and needs a real terminal, so it can't run inside this session — it has to launch in a separate Terminal window.
@@ -21,7 +23,7 @@ qualifier older than the window. It never touches applied rows and never deletes
 board ever shows something older than the window, suspect a stale binary first and rebuild:
 `cd dashboard && go build -o career-dashboard . && cp career-dashboard ../`.
 
-**The scan window is a different number.** `run-pipeline.mjs --hours N` controls how far back the
+**The scan window is a different number.** `scan-index.mjs --hours N` (the `ats:index` lane of `morning.mjs`, `scan_window_days`) controls how far back the
 ATS scan looks; the board window controls what is displayed.
 
 **The Applied panel is persistent history**, not windowed. An empty Found with a populated Applied

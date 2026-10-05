@@ -1,5 +1,7 @@
 # Mode: scan-web — Scored Browser Web Comb (self-improving)
 
+> Runs automatically in: daily (`websearch` lane, §Headless only). The browser comb is interactive only.
+
 Browses the open web with real browsers (in parallel), **scores every find with the `offer` A–F rubric**,
 keeps only **score ≥ {THRESHOLD}** (default `pipeline.qualify_score`), and stops when **{TARGET}** (default `pipeline.daily_quota`) qualifiers
 are found. If a pass yields fewer, it **banks a learning, refines itself, and re-combs** — getting leaner each
@@ -23,7 +25,7 @@ iteration. List-only output (no `pipeline.md` / `scan-history.tsv` writes unless
 - Each subagent uses WebSearch + WebFetch only (no browser MCP — keep browser work on the main agent), applies the §Learnings pre-filters (location/remote policy, off-archetype, no staffing/anonymized via `loadNoise()`), resolves to the canonical ATS posting, and **returns a fenced `tsv` block** (`company<TAB>role<TAB>location<TAB>posted<TAB>canonical_url<TAB>source`) — it does not write files (avoids parallel-write races).
 - Main agent fans in: concatenate the tsv, dedup vs `scored-jobs.tsv`, then score + qualify as below.
 
-The **headless `pipeline-cron` web-search stage** (step 1c) cannot fan out subagents (`claude -p` pipe mode has no Agent tool), so it uses a single web-search agent there; the subagent fan-out above is the interactive-session accelerator.
+The **headless `websearch` lane in `scripts/morning.mjs`** (see §Headless) cannot fan out subagents (`claude -p` pipe mode has no Agent tool), so it uses a single web-search agent there; the subagent fan-out above is the interactive-session accelerator.
 
 ## The loop
 1. **Comb** (§Sources) — gather candidates with each site's native 24h filter, parallel tabs.
@@ -92,3 +94,17 @@ careers page or board API.
 
 Pacing: charge the `search` budget in `li-budget.mjs` per query, scroll before extracting, stay
 on result pages 1–2. Job listings only -- never people search from a scan.
+
+## Headless
+
+Loaded by the `websearch` lane of `scripts/morning.mjs` (daily only). Only this section applies there;
+the prompt supplies roles, window, location rule and the TSV column contract inline, and those override
+anything above.
+
+- WebSearch + WebFetch only. No browser MCP, no LinkedIn (logged-in or guest), no subagents.
+- If `data/web-search-learnings.md` exists, read it first and follow its playbook.
+- Resolve every find to the employer's own ATS posting; drop anything without one, staffing agencies,
+  aggregator relists, and employers in `data/_speed-noise.txt` or `data/_never-apply.txt`.
+- Skip urls already in `data/scored-jobs.tsv` or `data/_web-roles.tsv`.
+- Append finds to `data/_web-roles.tsv` only, then run `node scripts/web-roles.mjs --clean`.
+- Never score, never draft outreach, never write reports here. End with the one summary line the prompt asks for.
