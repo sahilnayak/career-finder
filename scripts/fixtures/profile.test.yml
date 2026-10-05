@@ -1,0 +1,34 @@
+# Fixture profile for the offline test suite (scripts/test-*.mjs).
+# Tests point targets.mjs at this file via CAREER_FINDER_PROFILE so they never depend on the
+# real user's config/profile.yml. Generic placeholder candidate; edit only alongside the tests.
+candidate:
+  full_name: "Test Candidate"
+  email: "test.candidate@example.com"
+targets:
+  roles: ["Data Engineer", "Analytics Engineer", "Data Platform Engineer"]
+  title_keywords: ["ETL Engineer"]
+  title_negatives: ["!director", "!vp", "!intern", "manager", "analyst", "sales"]
+  primary_role: "Data Engineer"
+  seniority: "mid"
+location:
+  metro: "Chicago Metro"
+  city: "Chicago"
+  state: "IL"
+  country: "United States"
+  lat: 41.8781
+  lng: -87.6298
+  radius_mi: 50
+  linkedin_geo_id: "103112676"
+  remote_policy: "remote-country"
+  cities: ["Chicago", "Evanston", "Naperville"]
+pipeline:
+  qualify_score: 4.3
+  daily_quota: 3
+  primary_quota: 1
+  window_hours: 24
+outreach:
+  bridge: "I'm a data engineer who has spent five years building pipelines."
+  default_bullets:
+    - "Built a streaming ingestion pipeline that cut warehouse latency from hours to minutes."
+    - "Migrated 40 batch jobs to dbt, halving compute cost."
+    - "Owned data quality checks across 200 production tables."
