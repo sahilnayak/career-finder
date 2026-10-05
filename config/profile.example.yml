@@ -107,9 +107,33 @@ pipeline:
   scan_window_days: 7    # ATS sweeps keep postings published within this many days
   hiringcafe_days: 7     # HiringCafe search window, in days
   max_yoe_over: 2        # drop postings asking more than candidate.years + this many years
+  # Cost bounds for the scheduled run (every `claude -p` call runs on Sonnet by default).
+  score_cap: 10          # candidates scored per run (daily); the rest roll to the next run
+  report_cap: 5          # full A-G reports written per daily run
+  daily_claude_cap: 40   # claude -p calls per LOCAL day across daily+speed+hot; at the cap the run exits 3
+  claude_max_turns: 60   # --max-turns on every claude -p call
+  claude_timeout_min: 30 # wall-clock limit per claude -p call
+  scoring_model: "sonnet"
+  report_model: "sonnet"
+  keep_search:
+    max_rounds: 0        # extra web keep-search rounds when the quota is short (0 = off)
+
+# ── SCHEDULE: `npm run schedule -- install` reads this ─────────────────────────────────────────
+schedule:
+  daily_time: "07:00"   # local HH:MM for the daily run (speed/hot are opt-in flags on install)
+
+# ── HARD GATES: a job failing any gate set here is capped below qualify_score ───────────────
+# Nothing is hard-coded; leave a gate unset to turn it off.
+hard_gates:
+  years: true                # REQUIRED years above candidate.years + pipeline.max_yoe_over
+  clearance: false           # true = reject any required clearance; or a level you hold, e.g. "Secret"
+  needs_sponsorship: false   # true = reject postings that say they cannot sponsor visas
+  languages: []              # spoken languages you work in, e.g. ["English", "Spanish"]; [] = no gate
+  other: []                  # free-text gates, e.g. "requires relocation outside the metro"
 
 # ── DISCOVERY: your own seed list of companies to watch (optional) ─────────────────────────
 discovery:
+  yc: false              # also sweep the YC company directory in the discover-companies fan-in
   seed_companies:
     # Each entry is either a bare company name, or {company, careers_url}.
     - "Acme Analytics"
@@ -132,6 +156,7 @@ integrations:
   # never silently skipped. Pause everything with `npm run linkedin:off` (data/LINKEDIN_OFF).
   linkedin: true
   linkedin_pages: 2      # result pages (25 cards each) per crawl search; 1-4, each page is budgeted
+  linkedin_rescue: 5     # max tier-3 Apply-href rescues per crawl (1 logged-in page each); 0 = off
   gmail: false           # read-only Gmail lanes (job alerts, reply detection)
 
 # ── OUTREACH: draft-only email / LinkedIn notes (nothing is ever sent automatically) ─────────

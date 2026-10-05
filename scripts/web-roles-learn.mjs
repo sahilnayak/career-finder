@@ -6,7 +6,7 @@
  * Joins every archived web find (data/_web-roles-history.tsv) to its scoring verdict
  * (data/scored-jobs.tsv, matched on URL) and measures which SOURCES and TITLES actually
  * produce qualifiers (score ≥ pipeline.qualify_score). It then banks ONE dated learning per day to
- * data/web-search-learnings.md — which the pipeline-cron web-search agent reads at the
+ * data/web-search-learnings.md — which the morning.mjs websearch lane reads at the
  * top of its next run to re-target: prioritize high-yield sources/titles, drop dead ones,
  * prefer the company-shapes that scored. search → score → learn → re-search.
  *

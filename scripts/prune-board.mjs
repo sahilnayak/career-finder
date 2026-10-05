@@ -66,8 +66,10 @@ for (let i = 1; i < lines.length; i++) {
   if (f[9]) continue;   // already dismissed
 
   // found_at (col 8) is the discovery time; fall back to the date column.
-  const t = Date.parse(f[7] || f[0]);
-  if (isNaN(t)) continue;
+  // Freshest of the two: a found_at holding an old ATS claim must not age out a row scored today.
+  const tf = Date.parse(f[7] || ''), td = Date.parse(f[0] ? `${f[0]}T12:00:00` : '');
+  if (isNaN(tf) && isNaN(td)) continue;
+  const t = Math.max(isNaN(tf) ? 0 : tf, isNaN(td) ? 0 : td);
   const ageH = (now - t) / 3600e3;
   if (ageH <= HOURS) continue;
 

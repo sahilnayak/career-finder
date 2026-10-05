@@ -165,7 +165,7 @@ async function fetchYC() {
     // page and take the ATS link THEY publish. A link on the company's own domain is
     // self-asserted identity, so there is no collision left to resolve.
     const ATS_LINK = /https?:\/\/(?:job-boards\.|boards\.)?(?:greenhouse\.io\/[a-z0-9-]+|jobs\.ashbyhq\.com\/[a-z0-9-]+|jobs\.lever\.co\/[a-z0-9-]+|careers\.smartrecruiters\.com\/[a-z0-9-]+|apply\.workable\.com\/[a-z0-9-]+|[a-z0-9-]+\.recruitee\.com|ats\.rippling\.com\/[a-z0-9-]+)/i;
-    const LIMIT = Number(process.env.YC_PROBE_LIMIT || 120);   // incremental; the rest roll to the next run
+    const LIMIT = Number(process.env.YC_PROBE_LIMIT || 150);   // incremental; the rest roll to the next run
     const out = [];
     const probedNames = [];
     let probed = 0;
@@ -227,7 +227,8 @@ async function main() {
   }
   if (existsSync(SEED_FILE)) add(parseTsvPairs(readFileSync(SEED_FILE, 'utf-8')), 'seed');
   if (fromFile && existsSync(fromFile)) add(parseTsvPairs(readFileSync(fromFile, 'utf-8')), 'agent');
-  const ycOn = argv.includes('--yc') || profile.discovery?.yc === true;
+  // `discovery.yc: false` always wins (morning passes --yc by default, item #17).
+  const ycOn = profile.discovery?.yc !== false && (argv.includes('--yc') || profile.discovery?.yc === true);
   if (fromFile && !existsSync(fromFile)) { console.error(`discover-companies: --from file not found: ${fromFile}`); process.exit(1); }
   if (!candidates.size && !ycOn) {
     console.error('discover-companies: no company sources configured. Add discovery.seed_companies to config/profile.yml,');

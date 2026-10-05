@@ -25,8 +25,10 @@ export function pruneQualifiers(path = QUAL, now = Date.now()) {
   let dropped = 0;
   for (const l of lines.slice(1)) {
     const c = l.split('\t');
-    const stamp = c[I.posted] || c[I.date] || '';
-    const t = new Date(stamp).getTime();
+    // Freshest of posted / date: an old ATS or aggregator claim date in `posted` must not
+    // prune a row this run just qualified (ATS age is not a freshness gate on nomination lanes).
+    const ts = [c[I.posted], c[I.date]].map(x => new Date(x || '').getTime()).filter(x => !isNaN(x));
+    const t = ts.length ? Math.max(...ts) : NaN;
     if (!isNaN(t) && (now - t) <= MAX_MS) keep.push(l);
     else dropped++;
   }

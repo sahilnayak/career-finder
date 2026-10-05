@@ -33,7 +33,7 @@ const hours = hoursIdx !== -1 ? parseFloat(argv[hoursIdx + 1]) : 12;
 const asJson = argv.includes('--json');
 
 // KILL-SWITCH: skip the LinkedIn guest comb while data/LINKEDIN_OFF exists (user-set 2026-06-17).
-// Emit an empty result so callers (pipeline-cron) treat it as "no LinkedIn signals" and move on.
+// Emit an empty result so callers (morning.mjs) treat it as "no LinkedIn signals" and move on.
 if (existsSync(new URL('../data/LINKEDIN_OFF', import.meta.url))) {
   if (asJson) process.stdout.write('[]\n');
   else console.error('speed-linkedin: LinkedIn activity is OFF (data/LINKEDIN_OFF present). Remove that file to re-enable.');

@@ -33,6 +33,13 @@
 
 import { existsSync, readFileSync } from 'fs';
 
+// INTERACTIVE-ONLY (item #21). Contact discovery spends lookups and touches people data. The scheduled run (morning.mjs) sets UNATTENDED=1 and runs
+// claude with --dangerously-skip-permissions, so this must never fire from cron.
+if (!process.stdout.isTTY || process.env.UNATTENDED === '1') {
+  console.error('find-people: refused — interactive-only (no TTY or UNATTENDED=1). Run it yourself from a terminal.');
+  process.exit(2);
+}
+
 const val = (f, d = '') => { const i = process.argv.indexOf(f); return i > -1 && process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[i + 1] : d; };
 const has = f => process.argv.includes(f);
 const COMPANY = val('--company');

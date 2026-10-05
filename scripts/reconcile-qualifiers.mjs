@@ -5,7 +5,7 @@
  * scored ledger (data/scored-jobs.tsv), which is what the dashboard's Found panel reads.
  *
  * WHY: qualifiers.tsv is fed by snippet scans (scan-se / scan-index) that score from a
- * LinkedIn/board card; pipeline-cron later re-scores the SAME job from the canonical JD.
+ * LinkedIn/board card; morning.mjs later re-scores the SAME job from the canonical JD.
  * The two can disagree, so a job can sit in qualifiers.tsv at >=4.3 while the canonical
  * re-score put it below 4.3 — a false positive the dashboard correctly hides, leaving the
  * two views out of sync. This step reconciles them every pipeline cycle.

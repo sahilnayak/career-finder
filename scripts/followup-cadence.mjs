@@ -8,6 +8,7 @@
  * Run: node followup-cadence.mjs             (JSON to stdout)
  *      node followup-cadence.mjs --summary   (human-readable dashboard)
  *      node followup-cadence.mjs --overdue-only
+ *      node followup-cadence.mjs --count     (one line for the digest: overdue + urgent; read-only)
  *      node followup-cadence.mjs --applied-days 10
  */
 
@@ -27,6 +28,7 @@ const FOLLOWUPS_FILE = join(CAREER_OPS, 'data/follow-ups.md');
 const args = process.argv.slice(2);
 const summaryMode = args.includes('--summary');
 const overdueOnly = args.includes('--overdue-only');
+const countMode = args.includes('--count');
 const appliedDaysIdx = args.indexOf('--applied-days');
 const APPLIED_FIRST = appliedDaysIdx !== -1 ? parseInt(args[appliedDaysIdx + 1]) || 7 : 7;
 
@@ -317,7 +319,10 @@ function printSummary(result) {
 // --- Run ---
 const result = analyze();
 
-if (summaryMode) {
+if (countMode) {
+  const m = result.metadata || {};
+  console.log(`FOLLOWUP: ${m.overdue || 0} overdue, ${m.urgent || 0} urgent (of ${m.actionable || 0} active)`);
+} else if (summaryMode) {
   printSummary(result);
 } else {
   console.log(JSON.stringify(result, null, 2));

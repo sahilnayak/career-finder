@@ -179,6 +179,9 @@ async function checkTargets() {
  */
 async function linkedinLane(integ, browser) {
   if (integ.linkedin === false) return ['LinkedIn job lanes — disabled (integrations.linkedin: false)', null];
+  let chromeBin = null;
+  try { chromeBin = (await import('./chrome-debug.mjs')).resolveChromeBin(); } catch {}
+  if (!chromeBin) return ['LinkedIn job lanes — SKIPPED (no Chrome): install Chrome/Chromium or set CAREER_FINDER_CHROME', false];
   if (existsSync(join(projectRoot, 'data', 'LINKEDIN_OFF'))) return ['LinkedIn job lanes — kill-switch on (npm run linkedin:on)', null];
   let geo = '';
   try { geo = (await import('./li-geo.mjs')).liGeoId() || ''; } catch {}
@@ -221,8 +224,15 @@ async function optionalLanes() {
   const gated = (label, flag, ok) => integ[flag] === true
     ? [label, ok]
     : [`${label} — ${ok ? 'available but not enabled' : 'not enabled'} (integrations.${flag}: false)`, null];
+  // #16: the outcomes lane needs the gmail MCP registered with claude, not just the OAuth files.
+  let gmailMcp = null;
+  if (integ.gmail === true && has('claude')) {
+    const r = spawnSync('claude', ['mcp', 'list'], { encoding: 'utf8', timeout: 20000 });
+    gmailMcp = r.error ? false : r.status === 0 && /gmail/i.test((r.stdout || '') + (r.stderr || ''));
+  }
   return [
     ['claude CLI (scoring, reports, web search)', has('claude')],
+    ...(gmailMcp === null ? [] : [[`Gmail MCP in \`claude mcp list\`${gmailMcp ? '' : ' — missing or timed out; the morning outcomes lane will be skipped with this reason'}`, gmailMcp]]),
     await linkedinLane(integ, browser),
     gated('Gmail OAuth in ~/.gmail-mcp (job alerts, outcome detection)', 'gmail', gmail),
     ['go (dashboard build)', has('go')],

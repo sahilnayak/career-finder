@@ -32,6 +32,9 @@ const LOGS = [
   { path: 'data/_pipeline.log', keepLines: 2000 },
   { path: 'data/_qualifiers-reconcile.log', keepLines: 500 },
   { path: 'data/_speed-cron.log', keepLines: 500 },
+  { path: 'data/_schedule-daily.out', keepLines: 500 },
+  { path: 'data/_schedule-speed.out', keepLines: 500 },
+  { path: 'data/_schedule-hot.out', keepLines: 500 },
 ];
 
 function rotate({ path, keepLines }) {

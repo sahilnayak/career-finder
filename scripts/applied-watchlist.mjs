@@ -2,7 +2,8 @@
 
 /**
  * applied-watchlist.mjs — jobs you've applied to that are still awaiting a
- * decided outcome, for the Gmail outcome sweep (scripts/detect-outcomes).
+ * decided outcome, for the Gmail outcome sweep (the outcomes step in scripts/morning.mjs, prompt
+ * from the outcomes section of modes/feedback.md). An empty list `[]` lets that step skip for free.
  *
  * Source of truth for "applied" = data/applications.md Status column. A row is
  * on the watchlist when its status is in-flight (Applied / Responded / Interview)

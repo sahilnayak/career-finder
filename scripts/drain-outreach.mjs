@@ -50,6 +50,12 @@ const argv = process.argv.slice(2);
 const has = f => argv.includes(f);
 const val = (f, d) => { const i = argv.indexOf(f); return i > -1 && argv[i + 1] ? argv[i + 1] : d; };
 const BULLETS_ONLY = has('--bullets-only');
+// INTERACTIVE-ONLY (item #21). The full drain spends LinkedIn/browser budget and finds contacts;
+// only --bullets-only (claude -p, no browser) may run unattended. morning.mjs sets UNATTENDED=1.
+if (!BULLETS_ONLY && (!process.stdout.isTTY || process.env.UNATTENDED === '1')) {
+  console.error('drain-outreach: refused — the full drain is interactive-only (no TTY or UNATTENDED=1). Use --bullets-only for headless runs.');
+  process.exit(2);
+}
 // Escape hatch for the judge gate (step 6). Without it a HARD violation leaves the job
 // queued instead of marked drafted. Use only when the violation is known-cosmetic.
 const FORCE = has('--force');

@@ -363,7 +363,7 @@ if (fileExists('VERSION')) {
 // card per page for months, undetected, because the parser lived inside a page.evaluate()
 // closure and could not be run without a browser) and the LinkedIn guardrails.
 console.log('\n🧪 Offline sub-suites');
-for (const suite of ['test-linkedin-parse.mjs', 'test-li-safety.mjs', 'test-linkedin-applyurl.mjs', 'test-hiringcafe.mjs', 'test-ats-families.mjs']) {
+for (const suite of ['test-linkedin-parse.mjs', 'test-li-safety.mjs', 'test-linkedin-applyurl.mjs', 'test-hiringcafe.mjs', 'test-ats-families.mjs', 'test-pipeline-wiring.mjs']) {
   try {
     const out = execFileSync('node', [`scripts/${suite}`], { cwd: ROOT, encoding: 'utf8', timeout: 60_000 });
     const m = out.match(/📊 (\d+) passed, (\d+) failed/);

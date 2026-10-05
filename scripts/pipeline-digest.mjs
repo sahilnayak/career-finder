@@ -76,24 +76,24 @@ const t = scoredOn(today), y = scoredOn(yday);
 // cannot take its lock, so a stale lock or a still-running twin looks exactly like clean success.
 // The only trustworthy signal is a start line in the log for today.
 const CRONS = [
-  ['pipeline', 'data/_pipeline.log', /pipeline start/],
-  ['speed', 'data/_speed-cron.log', /speed-cron start/],
-  ['hot', 'data/_hot.log', /hot(-cron)? start/],
+  ['daily', 'data/_pipeline.log', /career-finder daily run start/],
+  ['speed', 'data/_speed-cron.log', /career-finder speed run start/],
+  ['hot', 'data/_hot.log', /career-finder hot run start/],
 ];
 const crons = CRONS.map(([name, log, re]) => {
   const ls = lines(log);
   const todays = ls.filter((l) => l.includes(today) && re.test(l));
-  // A REQUESTED pause is not a broken cron. pipeline-cron.sh writes "pipeline SKIPPED" (never
-  // "pipeline start") when today is in data/_pipeline-skip-dates.txt, so without this the digest
+  // A REQUESTED pause is not a broken cron. morning.mjs writes a SKIPPED line (never a
+  // "run start" line) when today is in data/_pipeline-skip-dates.txt, so without this the digest
   // would report **DID NOT RUN TODAY** on a day the user deliberately asked for off — the same
   // class of false alarm as the wall-clock gate regression, just inverted.
   const skipped = ls.some((l) => l.includes(today) && /SKIPPED/.test(l));
   const lastAny = [...ls].reverse().find((l) => re.test(l)) || '';
   return { name, log, ranToday: todays.length, skipped, lastSeen: (lastAny.match(/\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/) || ['never'])[0],
-           mtime: existsSync(log) ? statSync(log).mtime.toISOString().slice(0, 16).replace('T', ' ') : 'n/a' };
+           mtime: existsSync(log) ? (() => { const d = statSync(log).mtime, z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`; })() : 'n/a' };
 });
 
-// MASTER PAUSE. An indefinite pause is the dangerous kind: a launchd-disabled job can go unnoticed
+// MASTER PAUSE. An indefinite pause is the dangerous kind: a disabled scheduler job can go unnoticed
 // for days because nothing reports it.
 // So this is surfaced at the TOP of the digest, every day, WITH A DAY COUNT — the count is the part
 // that makes a forgotten pause visible, since "paused" alone reads the same on day 1 and day 40.
@@ -106,11 +106,11 @@ const pausedDays = pausedSince && pausedSince !== 'unknown'
   ? Math.max(0, Math.round((new Date(`${today}T00:00:00`) - new Date(`${pausedSince}T00:00:00`)) / 864e5))
   : null;
 
-// launchd tells us whether a job is even ELIGIBLE to run. Two jobs here are disabled on purpose.
+// launchd (macOS) tells us whether a job is even ELIGIBLE to run; a disabled label never fires.
 let disabled = [];
 try {
   const d = sh('launchctl', ['print-disabled', `gui/${process.getuid()}`]);
-  disabled = [...d.matchAll(/"(com\.careerops\.[^"]+)"\s*=>\s*disabled/g)].map((m) => m[1]);
+  disabled = [...d.matchAll(/"(com\.career-finder\.[^"]+)"\s*=>\s*disabled/g)].map((m) => m[1]);
 } catch { /* non-fatal */ }
 
 // ── 3. LANE FAILURES AND THE QUOTA-DEFERRED SIGNAL ──────────────────────────────
@@ -154,6 +154,10 @@ for (const l of apps) {
 }
 
 const quota = sh('node', ['scripts/daily-quota.mjs']).split('\n').filter((l) => /QUOTA|Daily board policy/.test(l)).map((l) => l.trim());
+// #31 read-only counts: outreach awaiting a pick, follow-ups overdue (both --count modes write nothing).
+const countOf = (args, re) => { const m = sh('node', args).match(re); return m ? Number(m[1]) : null; };
+const awaiting = countOf(['scripts/outreach-queue.mjs', 'awaiting', '--count'], /AWAITING:\s*(\d+)/i);
+const overdue = countOf(['scripts/followup-cadence.mjs', '--count'], /FOLLOWUP:\s*(\d+)/);
 const owed = (sh('node', ['scripts/pipeline-owed.mjs']).split('\n').find((l) => /^OWED/.test(l)) || '').trim();
 let live = '';
 if (LIVE) live = (sh('node', ['scripts/unclaimed-inventory.mjs', '--primary-only']).split('\n').filter((l) => /still open/.test(l))[0] || '').trim();
@@ -170,7 +174,7 @@ if (pausedSince) {
 }
 L.push('## Did it run');
 for (const c of crons) {
-  const dis = disabled.includes(`com.careerfinder.${c.name}`) ? '  [DISABLED in launchd]' : '';
+  const dis = disabled.includes(`com.career-finder.${c.name}`) ? '  [DISABLED in launchd]' : '';
   L.push(`- **${c.name}**: ${c.ranToday ? `ran ${c.ranToday}x today`
   : c.skipped ? `**PAUSED TODAY BY REQUEST** (${pausedSince ? 'kill-switch data/PIPELINE_OFF' : 'date listed in data/_pipeline-skip-dates.txt'})`
   : '**DID NOT RUN TODAY**'} · last start ${c.lastSeen}${dis}`);
@@ -197,16 +201,18 @@ L.push('');
 L.push('## Queues');
 for (const [k, v] of Object.entries(queues)) L.push(`- ${k}: **${v}**`);
 L.push(`- index: ${idx.length - 1} employers, **${idxErr}** boards erroring (${idx404} dead slug/404 -> repair-index, ${idxAbort} scan timeout -> raise FETCH_TIMEOUT_MS/backoff)`);
-if (queues['_web-roles.tsv'] > 100) L.push(`- ⚠️ _web-roles is deep (${queues['_web-roles.tsv']}); it is drained by pipeline-cron only.`);
+if (queues['_web-roles.tsv'] > 100) L.push(`- ⚠️ _web-roles is deep (${queues['_web-roles.tsv']}); it is drained by the morning run's score lane (SCORE_CAP per run).`);
 L.push('');
 L.push('## Downstream (the stage that actually binds)');
-L.push(`- qualifiers ever found: **${qualTotal}** — ${Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+L.push(`- qualifiers in the tracker (data/applications.md, all time): **${qualTotal}**${qualTotal ? ' — ' + Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ') : ''}${!qualTotal && t.qualified ? ` *(today's ${t.qualified} qualifier(s) are not in the tracker yet: the reports lane writes the row)*` : ''}`);
 if (owed) L.push(`- ${owed}`);
+if (awaiting != null) L.push(`- outreach awaiting a pick: **${awaiting}** (node scripts/outreach-queue.mjs awaiting)`);
+if (overdue != null) L.push(`- follow-ups overdue: **${overdue}** (node scripts/followup-cadence.mjs --overdue-only)`);
 if (live) L.push(`- ${live}`);
 L.push('');
 
 const md = L.join('\n');
 writeFileSync('data/_daily-digest.md', md + '\n');
-if (JSON_OUT) console.log(JSON.stringify({ today, scored: t, yesterday: y, crons, disabled, laneFails, queues, idxErr, byStatus, qualTotal }, null, 2));
+if (JSON_OUT) console.log(JSON.stringify({ today, scored: t, yesterday: y, crons, disabled, laneFails, queues, idxErr, byStatus, qualTotal, awaiting, overdue }, null, 2));
 else if (!QUIET) console.log(md);
 else console.log(`digest written → data/_daily-digest.md`);

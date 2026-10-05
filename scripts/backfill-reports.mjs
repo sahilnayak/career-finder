@@ -33,7 +33,7 @@ const minIdx = process.argv.indexOf('--min');
 const MIN = minIdx > -1 && process.argv[minIdx + 1] ? Number(process.argv[minIdx + 1]) : requireTargets().pipeline.qualify_score;
 // Verdicts that can never reach the board, regardless of score.
 const DEAD = /^(pass|stale|SKIP)$/i;
-const today = new Date().toISOString().slice(0, 10);
+const today = (d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)(new Date()); // local date, matches tracker
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 // A report is the drill-in for a job, so it has to POINT AT the other two artifacts. The first

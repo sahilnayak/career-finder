@@ -5,7 +5,7 @@
  * instead of logging ten failures and exiting 0 as if the market were quiet.
  *
  * THE BUG THIS EXISTS FOR. `claude -p` prints "You've hit your session limit · resets 12pm" and
- * **still exits 0**. Every LLM step in pipeline-cron.sh therefore "succeeds", the run exits 0,
+ * **still exits 0**. Every LLM step in morning.mjs therefore "succeeds", the run exits 0,
  * launchctl reports success, and the board shows nothing. That is indistinguishable from a genuinely
  * quiet morning — except jobs WERE found and simply never scored.
  *
@@ -23,6 +23,12 @@
  *   node scripts/quota-guard.mjs check <logfile>   # did this run hit the limit? sets the marker
  *   node scripts/quota-guard.mjs status            # is a deferred backlog pending? exit 0 if yes
  *   node scripts/quota-guard.mjs clear             # backlog scored; remove the marker
+ *   node scripts/quota-guard.mjs mark [--mode daily|speed|hot] [--resets 12pm] [--hits N]
+ *                                                  # caller already saw the wall (morning.mjs exit-3 path)
+ *
+ * Generic API (audited for item #10): nothing here assumes a role family. The unscored count reads
+ * the shared ledgers only; the run slice starts at morning.mjs's "<mode> run start" banner (or the
+ * legacy "pipeline start"), so a whole-day log is never re-scanned.
  */
 
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
@@ -35,6 +41,7 @@ const arg = process.argv[3];
 // matters: a crash, a bad prompt and a quota wall are three different failures and only this one
 // is worth retrying unchanged.
 const LIMIT_RE = /hit your session limit|usage limit reached|rate limit.*resets|quota exceeded/i;
+const flag = (f, d) => { const i = process.argv.indexOf(f); return i > -1 && process.argv[i + 1] ? process.argv[i + 1] : d; };
 const RESET_RE = /resets\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i;
 
 /** Count what is sitting unscored right now, so the marker records the real cost of the miss. */
@@ -60,7 +67,7 @@ function unscoredCount() {
 if (cmd === 'check') {
   const log = arg && existsSync(arg) ? readFileSync(arg, 'utf-8') : '';
   // Only inspect THIS run: everything after the last "pipeline start" banner.
-  const lastStart = log.lastIndexOf('pipeline start');
+  const lastStart = Math.max(log.lastIndexOf('pipeline start'), log.lastIndexOf(' run start'));
   const slice = lastStart > -1 ? log.slice(lastStart) : log;
   const hits = (slice.match(LIMIT_RE) || []).length;
 
@@ -87,6 +94,20 @@ if (cmd === 'check') {
   process.exit(3);   // distinct from 0 (fine) and 2 (a real failure)
 }
 
+if (cmd === 'mark') {
+  const pending = unscoredCount();
+  writeFileSync(MARKER, JSON.stringify({
+    deferred_at: new Date().toISOString(),
+    limit_hits: Number(flag('--hits', 1)) || 1,
+    resets_at: flag('--resets', 'unknown'),
+    mode: flag('--mode', 'unknown'),
+    unscored_when_deferred: pending,
+    note: 'Scoring did NOT run — the quota was exhausted, not the market. Candidates are collected and waiting.',
+  }, null, 2) + '\n');
+  console.log(`quota-guard: marker written (${pending} unscored).`);
+  process.exit(0);
+}
+
 if (cmd === 'status') {
   if (!existsSync(MARKER)) { console.log('no deferred backlog'); process.exit(1); }
   const m = JSON.parse(readFileSync(MARKER, 'utf-8'));
@@ -101,5 +122,5 @@ if (cmd === 'clear') {
   process.exit(0);
 }
 
-console.error('usage: quota-guard.mjs check <logfile> | status | clear');
+console.error('usage: quota-guard.mjs check <logfile> | status | clear | mark [--mode m] [--resets t] [--hits n]');
 process.exit(64);

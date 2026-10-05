@@ -20,6 +20,13 @@ import { homedir } from 'os';
 import { join } from 'path';
 
 import { spend as liSpend } from './li-budget.mjs';
+
+// INTERACTIVE-ONLY (item #21). Spends the shared LinkedIn profile budget. The scheduled run (morning.mjs) sets UNATTENDED=1 and runs
+// claude with --dangerously-skip-permissions, so this must never fire from cron.
+if (!process.stdout.isTTY || process.env.UNATTENDED === '1') {
+  console.error('guest-verify: refused — interactive-only (no TTY or UNATTENDED=1). Run it yourself from a terminal.');
+  process.exit(2);
+}
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0 Safari/537.36';
 const slugs = process.argv.slice(2).map(s => s.replace(/^.*\/in\//, '').replace(/\/.*$/, '')).filter(Boolean);
 if (!slugs.length) { console.error('usage: node scripts/guest-verify.mjs <slug> [<slug> ...]'); process.exit(1); }

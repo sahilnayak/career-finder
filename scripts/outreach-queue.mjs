@@ -24,6 +24,7 @@
  *   node scripts/outreach-queue.mjs list --json
  *   node scripts/outreach-queue.mjs awaiting              # >= qualify_score in window, not yet picked
  *   node scripts/outreach-queue.mjs awaiting --json
+ *   node scripts/outreach-queue.mjs awaiting --count      # one line for the digest (read-only)
  *   node scripts/outreach-queue.mjs add --company "Acme" --role "Data Engineer" \
  *                                       [--url U] [--score 4.4] [--li-mode auto|roster|targeted]
  *   node scripts/outreach-queue.mjs done --company "Acme" --role "..."   # mark drafted
@@ -190,6 +191,7 @@ if (cmd === 'awaiting') {
   const awaiting = qualifiersInWindow()
     .filter(q => !queued.some(r => sameJob(r, q)))
     .filter(q => !drafted.some(d => sameJob(d, q)));
+  if (has('--count')) { console.log(`OUTREACH AWAITING: ${awaiting.length}`); process.exit(0); }
   if (asJson) {
     process.stdout.write(JSON.stringify(awaiting, null, 2) + '\n');
     process.exit(0);

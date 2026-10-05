@@ -13,7 +13,7 @@
  * A found job is OWED until each artifact exists OR the tracker marks it terminal
  * (Applied / Discarded / SKIP / Rejected / Offer = out of the pipeline by decision).
  *   report  — applications.md row has a [n](reports/..) link whose file exists.
- *   resume  — tracker PDF cell is ✅, or output/cv-*-{slug}-*.pdf exists.
+ *   resume  — tracker PDF cell is ✅, or output/cv-*-{slug}-*.pdf exists. Owed ONLY for picked jobs.
  *   outreach— a matching row in outreach-log.tsv (same jd_url, or company+role overlap).
  *
  * Usage:
@@ -89,9 +89,13 @@ function readTsv(path) {
 const WINDOW_MS = (() => { try { return loadTargets().pipeline.window_hours; } catch { return 24; } })() * 3600 * 1000;
 const now = Date.now();
 const foundAtMs = r => {
-  let t = Date.parse((r.found_at || '').trim());
-  if (isNaN(t) && r.date) t = Date.parse(`${r.date}T12:00:00`); // day-level fallback at noon
-  return isNaN(t) ? 0 : t;
+  // Freshest of found_at / scored date (noon local). A found_at carrying an ATS or aggregator
+  // claim date must not drop a row scored today out of the owed window: ATS age is not a
+  // freshness gate on nomination lanes.
+  const t = Date.parse((r.found_at || '').trim());
+  const d = r.date ? Date.parse(`${r.date}T12:00:00`) : NaN;
+  const best = Math.max(isNaN(t) ? 0 : t, isNaN(d) ? 0 : d);
+  return best;
 };
 const found = new Map(); // key -> {company, role, score, url}
 for (const r of readTsv(`${ROOT}data/scored-jobs.tsv`)) {
@@ -147,8 +151,8 @@ function hasOutreach(company, role, url) {
 
 // --- 3b. the OUTREACH SELECTION GATE (user-set 2026-07-25) ---
 // Outreach is no longer owed on every >= 4.3: the user picks which qualifiers are worth the
-// LinkedIn/email budget (dashboard `w` -> data/outreach-queue.tsv). Report and resume are still
-// owed unconditionally — they are cheap and headless. So a job only owes OUTREACH when the user
+// LinkedIn/email budget (dashboard `w` -> data/outreach-queue.tsv). The report is still owed
+// unconditionally (cheap, headless); the resume shares this gate since PDF became interactive-only. So a job only owes OUTREACH when the user
 // picked it. An un-picked qualifier missing outreach is a decision, not a gap.
 // See modes/outreach.md + memory feedback_outreach_user_selected.
 const picked = readTsv(`${ROOT}data/outreach-queue.tsv`)
@@ -343,7 +347,9 @@ for (const j of found.values()) {
     const rp = (reportPath && existsSync(`${ROOT}${reportPath}`)) ? reportPath : reportFileFor(j.company, j.role);
     if (rp && isStubReport(rp)) missing.push('full-report');
   }
-  if (!hasResume) missing.push('resume');
+  // Resume is owed only for jobs the user picked (item #3): PDF generation is interactive-only,
+  // so an un-picked qualifier without a PDF is a decision, not a gap. Same gate as outreach.
+  if (!hasResume && isPickedForOutreach(j.company, j.role, j.url)) missing.push('resume');
   if (!outreach) missing.push('outreach');
   if (missing.length) owed.push({ ...j, status: t ? t.status : '(not in tracker)', missing });
 }
@@ -377,7 +383,7 @@ const tally = owed.reduce((acc, j) => {
   return acc;
 }, {});
 if (!owed.length) {
-  console.log(`OWED: 0  — every found (>= ${THRESHOLD}) job has a report and resume, and every job you picked for outreach has drafts.`);
+  console.log(`OWED: 0  — every found (>= ${THRESHOLD}) job has a report, and every job you picked has a resume and outreach drafts.`);
   reportVerifyFailures();
   process.exit(0);
 }

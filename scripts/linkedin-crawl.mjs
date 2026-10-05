@@ -73,6 +73,8 @@ const ROOT = new URL('..', import.meta.url).pathname;
 const WRITE = process.argv.includes('--write');
 // Tier-3 Apply-href rescue is ON by default; --no-rescue disables it for a pure guess-only run.
 const RESCUE = !process.argv.includes('--no-rescue');
+// --rescue-max N caps the tier-3 Apply-href rescue (each is one logged-in page load). Default 20.
+const RESCUE_MAX = (() => { const i = process.argv.indexOf('--rescue-max'); const n = i >= 0 ? Number(process.argv[i + 1]) : 20; return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 20; })();
 // A flag's value must not be another flag: `--pages --write` used to yield Number('--write')
 // = NaN, and `Math.max(1, NaN)` is NaN, so the page loop never ran and the crawl reported zero
 // cards. Loud (it exits 2) but for entirely the wrong reason.
@@ -685,8 +687,8 @@ const rescued = [];
 // Reqs Tier-4 proved are real and on-archetype but whose page states no post date. Surfaced
 // for a human glance, never written as fresh — see the tier-4 no-date branch.
 const needsReview = [];
-if (RESCUE && rejected.length) {
-  const targets = rejected.filter(r => /^no public ATS board/.test(r.why));
+if (RESCUE && RESCUE_MAX > 0 && rejected.length) {
+  const targets = rejected.filter(r => /^no public ATS board/.test(r.why)).slice(0, RESCUE_MAX);
   if (targets.length) {
     console.log(`\nTIER 3 — resolving ${targets.length} unresolved employer(s) via LinkedIn Apply href…`);
     // Job IDs come from the LOGGED-OUT guest API: free, no account action, no jobsearch spend.
