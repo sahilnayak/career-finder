@@ -8,7 +8,7 @@
  * WHAT THIS PROTECTS. Failure classes that are silent: a dead lane and a quiet market look
  * identical from the board.
  *   1. A lane that exists but is not WIRED into the morning run (scripts/morning.mjs; the
- *      scripts/pipeline-cron.sh shell entry point is a thin wrapper around it).
+ *      scheduler, scripts/schedule.mjs, calls it directly).
  *   2. A search that quietly narrows, or that searches a hard-coded role/geography instead of
  *      the one in config/profile.yml.
  *   3. Schema / ordering invariants other scripts depend on.
@@ -21,6 +21,7 @@
 
 import './fixtures/use-test-profile.mjs'; // must stay first: pins targets.mjs to the fixture profile
 import { readFileSync, existsSync } from 'fs';
+import { spawnSync } from 'child_process';
 import {
   SEARCH_KEYWORDS, titleDropped, titleMatches, isPrimaryRole, locationMatches, classifyLocation,
   REMOTE, loadNoise, loadNeverApply, loadTargets,
@@ -32,14 +33,17 @@ const read = (p) => (existsSync(p) ? readFileSync(p, 'utf-8') : '');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 const T = loadTargets();
-// The morning run lives in morning.mjs; pipeline-cron.sh is a wrapper that must exec it.
-const wrapper = read('scripts/pipeline-cron.sh');
+// The morning run lives in morning.mjs; the scheduler (schedule.mjs --print) must target it directly.
+const schedPrint = (plat) => spawnSync(process.execPath, ['scripts/schedule.mjs', '--print', '--platform', plat, '--with-speed', '2'],
+  { encoding: 'utf8', env: { ...process.env, CAREER_FINDER_LAUNCH_DIR: '/tmp/cf-test-launch', CAREER_FINDER_CRONTAB_CMD: 'false' } }).stdout || '';
+const wrapper = schedPrint('launchd') + schedPrint('cron');
 const cron = read('scripts/morning.mjs');
 const lane = read('scripts/hiringcafe-scan.mjs');
 const lij = read('scripts/linkedin-jobsearch.mjs');
 
 console.log('\n1. The lanes are wired into the morning run');
-ok(/scripts\/morning\.mjs/.test(wrapper), 'pipeline-cron.sh execs scripts/morning.mjs');
+ok(/scripts\/morning\.mjs<\/string>\s*<string>--mode<\/string>\s*<string>daily/.test(wrapper) && /scripts\/morning\.mjs' --mode daily/.test(wrapper)
+  && !/-cron\.sh|\/Users\/YOU/.test(wrapper), 'schedule.mjs --print (launchd + cron) targets scripts/morning.mjs directly, no .sh wrappers');
 ok(/scripts\/hiringcafe-scan\.mjs/.test(cron), 'morning.mjs runs hiringcafe-scan.mjs');
 ok(cron.indexOf('scripts/hiringcafe-scan.mjs') > -1 && cron.indexOf('scripts/hiringcafe-scan.mjs') < cron.indexOf("'web-roles:clean'"),
   'the lane runs BEFORE web-roles.mjs --clean, so its rows pass the guardrail');

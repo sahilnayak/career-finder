@@ -274,8 +274,15 @@ thin; say so and offer to add more employers (step 7.2) or run the `discover` mo
   then set `integrations.linkedin: false` and say the ATS lanes still run.
 - **Gmail job alerts**: the email-alert lane reads LinkedIn job-alert emails read-only. Requires
   the Gmail MCP. Set `integrations.gmail: true` ONLY if they opt in and the MCP is configured.
-- **Scheduler**: the morning run on a timer. Follow `docs/SCHEDULING.md` (launchd on macOS, cron on
-  Linux). Install only with explicit consent; show the exact job definition first.
+- **Scheduler**: the daily run on a timer (macOS launchd, Linux crontab; Windows is manual, see
+  `docs/SCHEDULING.md`). Install only with explicit consent. First show the exact job definition with
+  `npm run schedule -- --print`, ask what time the daily run should fire (write it to
+  `schedule.daily_time` in `config/profile.yml`, default `07:00`), and say plainly that unattended
+  runs use `--dangerously-skip-permissions` unless `pipeline.claude_flags` is set, and that
+  `pipeline.daily_claude_cap` (default 40) bounds the calls per day. Then run
+  `npm run schedule -- install`. Daily only by default; offer `--with-speed N` (2-4/day) and
+  `--with-hot` (every 60 min; needs `node scripts/hot-list.mjs --build` first) only if they ask for
+  faster pickup. Finish with `npm run schedule -- status`.
 
 ## 9a. LinkedIn job lanes (default ON)
 

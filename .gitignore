@@ -73,6 +73,7 @@ data/_hot.launchd.log
 data/_hot.launchd.err.log
 data/linkedin-cache/
 data/_speed-cron.log
+data/_schedule-*.out
 data/speed-log.tsv
 data/_speed-noise.txt
 data/_speed-li.json
