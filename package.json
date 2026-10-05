@@ -1,0 +1,45 @@
+{
+  "name": "career-finder",
+  "version": "1.3.0",
+  "description": "Role-agnostic AI job search pipeline built on Claude Code: give it your resume, it builds the pipeline for your career",
+  "scripts": {
+    "doctor": "node scripts/doctor.mjs",
+    "verify": "node scripts/verify-pipeline.mjs",
+    "normalize": "node scripts/normalize-statuses.mjs",
+    "dedup": "node scripts/dedup-tracker.mjs",
+    "merge": "node scripts/merge-tracker.mjs",
+    "pdf": "node scripts/generate-pdf.mjs",
+    "sync-check": "node scripts/cv-sync-check.mjs",
+    "update:check": "node scripts/update-system.mjs check",
+    "liveness": "node scripts/check-liveness.mjs",
+    "scan": "node scripts/scan.mjs",
+    "test": "node scripts/test-all.mjs",
+    "jd-pdfs": "node scripts/gen-jd-pdfs.mjs",
+    "unclaimed": "node scripts/unclaimed-inventory.mjs",
+    "unclaimed-primary": "node scripts/unclaimed-inventory.mjs --primary-only",
+    "workable-search": "node scripts/workable-search.mjs",
+    "browser-boards": "node scripts/browser-boards.mjs",
+    "morning": "node scripts/morning.mjs",
+    "morning:dry": "node scripts/morning.mjs --dry-run",
+    "linkedin:login": "node scripts/chrome-debug.mjs start && node scripts/morning.mjs --linkedin-login",
+    "linkedin:test": "node scripts/morning.mjs --linkedin-test",
+    "linkedin:on": "node scripts/linkedin.mjs on",
+    "linkedin:off": "node scripts/linkedin.mjs off"
+  },
+  "keywords": [
+    "ai",
+    "job-search",
+    "claude-code",
+    "career",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "js-yaml": "^4.1.1",
+    "playwright": "^1.58.1"
+  },
+  "contributors": [
+    "Based on career-ops by Santiago Fernández de Valderrama (https://github.com/santifer/career-ops), MIT"
+  ]
+}

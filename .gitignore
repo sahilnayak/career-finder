@@ -1,0 +1,109 @@
+# Personal data (user fills these)
+data/applications.md
+data/pipeline.md
+data/scan-history.tsv
+reports/*.md
+!reports/.gitkeep
+!output/.gitkeep
+batch/logs/*
+!batch/logs/.gitkeep
+batch/batch-state.tsv
+batch/batch-input.tsv
+batch/tracker-additions/**/*.tsv
+!batch/tracker-additions/.gitkeep
+data/jds/
+
+
+# User config and customization (never auto-updated)
+config/profile.yml
+portals.yml
+modes/_profile.md
+.update-dismissed
+.update-lock
+
+# User's local scripts (experiments, prune/discover/filter helpers)
+scripts/local/
+
+# Generated
+.resolved-prompt-*
+node_modules/
+bun.lock
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Generated outreach drafts (canonical record is data/outreach-log.tsv)
+output/outreach/*.html
+output/outreach/*.drafts.json
+
+# Generated resume PDFs
+output/*.pdf
+
+# Local working state
+.tmp/
+
+# OS
+.DS_Store
+*.mov
+*.mp4
+
+# Python
+__pycache__/
+*.pyc
+
+# Claude Code local
+.claude/settings.local.json
+.claude/memory/
+career-dashboard
+package-lock.json
+
+# transient pipeline outputs (regenerated each run)
+.claude/scheduled_tasks.lock
+data/_pipeline.log
+data/_speed-ats.tsv
+data/_all-open.tsv
+data/_browser-queue.tsv
+data/_candidates.tsv
+# hot tier (5-min crawler) — regenerated every cycle
+data/_hot-candidates.tsv
+data/_hot.log
+data/_hot.launchd.log
+data/_hot.launchd.err.log
+data/linkedin-cache/
+data/_speed-cron.log
+data/speed-log.tsv
+data/_speed-noise.txt
+data/_speed-li.json
+data/_outreach-spec-*.json
+data/_session-state.md
+data/rosters/
+data/_once-*
+data/_hot-quota-backoff
+# rotated log history + archived transients (see scripts/rotate-logs.mjs)
+data/archive/
+
+# script-generated rotating backups (dedup-tracker, normalize-statuses, repair-index)
+data/*.bak
+data/*.bak-*
+# transient scan dumps and archived one-offs
+data/_hunt/
+data/_target-roles/
+data/archive/
+batch/archive/
+# ad hoc scrape scratch + cleanup quarantine
+.scratch/
+.trash-*/
+
+# Workbooks that embed someone else's LinkedIn connections: never commit.
+output/target-roles/
+
+# Root-level scratch from ad hoc runs
+*.out
+/probe-*.mjs
+/.*.html
+
+# LinkedIn lane runtime state
+data/li-usage/
+data/_li-geo-cache.json
