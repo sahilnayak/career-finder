@@ -35,6 +35,9 @@
  *   node scripts/linkedin-jobsearch.mjs --dry-run             # print, write nothing
  */
 
+// Request ledger: logged-in traffic is counted from li-budget claim() events; importing it
+// registers the exit-time flush to data/_request-ledger.tsv.
+import './request-ledger.mjs';
 import { appendFileSync, existsSync, readFileSync } from 'fs';
 import { cdpAlive, newPage, DEFAULT_PORT } from './cdp.mjs';
 import { requireTargets, SEARCH_KEYWORDS, LOCAL, titleMatches, titleDropped, locationMatches, loadNoise, areaLabel, dealbreakerHit } from './role-filters.mjs';

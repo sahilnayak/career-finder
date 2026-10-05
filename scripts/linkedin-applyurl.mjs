@@ -43,6 +43,7 @@
 
 import { newPage } from './cdp.mjs';
 import { liGeoParam } from './li-geo.mjs';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36';
 
@@ -66,7 +67,7 @@ export async function guestJobIds({ keywords, geoId = '', hours = 24, pages = 4 
       + `${geo ? `&${geo}` : ''}&start=${pg * 10}`;
     let html;
     try {
-      const r = await fetch(url, { headers: { 'User-Agent': UA } });
+      const r = await trackedFetch(url, { headers: { 'User-Agent': UA } });
       if (!r.ok) break;                     // 429 included: stop, never retry a throttle
       html = await r.text();
     } catch { break; }

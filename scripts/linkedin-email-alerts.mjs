@@ -31,6 +31,7 @@ import { pathToFileURL } from 'url';
 import { canonicalCompany } from './company-alias.mjs';
 import { applyUrlForJob, parseAtsUrl } from './linkedin-applyurl.mjs';
 import { requireTargets, loadNoise, titleMatches, titleDropped, locationMatches, areaLabel } from './role-filters.mjs';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 requireTargets();
 
@@ -51,7 +52,7 @@ async function accessToken() {
   const cred = JSON.parse(readFileSync(CRED, 'utf-8'));
   const keys = JSON.parse(readFileSync(KEYS, 'utf-8')).installed;
   if (cred.access_token && Date.now() < (cred.expiry_date || 0) - 60000) return cred.access_token;
-  const r = await fetch('https://oauth2.googleapis.com/token', {
+  const r = await trackedFetch('https://oauth2.googleapis.com/token', {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ client_id: keys.client_id, client_secret: keys.client_secret,
       refresh_token: cred.refresh_token, grant_type: 'refresh_token' }),
@@ -61,7 +62,7 @@ async function accessToken() {
 }
 
 const api = async (tok, path) => {
-  const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path}`,
+  const r = await trackedFetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path}`,
     { headers: { Authorization: `Bearer ${tok}` } });
   if (!r.ok) throw new Error(`gmail ${path.split('?')[0]}: ${r.status}`);
   return r.json();
@@ -138,7 +139,7 @@ function bodyText(payload) {
  *  than the alert's claim. Mirrors linkedin-crawl.mjs's fetchExactReq. */
 async function fetchExact(a) {
   try {
-    const r = await fetch(a.apiUrl, { headers: { 'User-Agent': 'career-finder/1.0' } });
+    const r = await trackedFetch(a.apiUrl, { headers: { 'User-Agent': 'career-finder/1.0' } });
     if (!r.ok) return null;
     const j = await r.json();
     if (a.atsType === 'greenhouse') return { loc: j.location?.name, pub: j.first_published || j.updated_at, url: j.absolute_url };

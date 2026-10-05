@@ -24,6 +24,7 @@
 import { readFileSync, writeFileSync, existsSync, statSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { isPrimaryRole, loadTargets } from './targets.mjs';
+import { readLedger, aggregate, fmtStatuses } from './request-ledger.mjs';
 
 const argv = process.argv.slice(2);
 const has = (f) => argv.includes(f);
@@ -203,6 +204,15 @@ for (const [k, v] of Object.entries(queues)) L.push(`- ${k}: **${v}**`);
 L.push(`- index: ${idx.length - 1} employers, **${idxErr}** boards erroring (${idx404} dead slug/404 -> repair-index, ${idxAbort} scan timeout -> raise FETCH_TIMEOUT_MS/backoff)`);
 if (queues['_web-roles.tsv'] > 100) L.push(`- ⚠️ _web-roles is deep (${queues['_web-roles.tsv']}); it is drained by the morning run's score lane (SCORE_CAP per run).`);
 L.push('');
+// Request ledger (scripts/request-ledger.mjs): requests per host family over the last 24h.
+{
+  const rows = readLedger({ sinceIso: new Date(Date.now() - 864e5).toISOString() });
+  const agg = aggregate(rows);
+  L.push('## Requests (last 24h, data/_request-ledger.tsv)');
+  if (!agg.size) L.push('- *(no ledger rows: no lane recorded a request, or the ledger is not wired into that lane)*');
+  for (const [fam, e] of agg) L.push(`- ${fam}: **${e.requests}** (${fmtStatuses(e.statuses)})`);
+  L.push('');
+}
 L.push('## Downstream (the stage that actually binds)');
 L.push(`- qualifiers in the tracker (data/applications.md, all time): **${qualTotal}**${qualTotal ? ' — ' + Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ') : ''}${!qualTotal && t.qualified ? ` *(today's ${t.qualified} qualifier(s) are not in the tracker yet: the reports lane writes the row)*` : ''}`);
 if (owed) L.push(`- ${owed}`);

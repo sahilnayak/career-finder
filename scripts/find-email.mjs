@@ -35,6 +35,7 @@
 import './load-env.mjs'; // make HUNTER_API_KEY (etc.) from .env visible
 import { execSync } from 'child_process';
 import dns from 'dns/promises';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
@@ -47,7 +48,7 @@ async function tryHunter(first, last, domain) {
   if (!key) return null;
   try {
     const url = `https://api.hunter.io/v2/email-finder?domain=${domain}&first_name=${encodeURIComponent(first)}&last_name=${encodeURIComponent(last)}&api_key=${key}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const res = await trackedFetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const { data } = await res.json();
     if (data?.email && typeof data.score === 'number') {
@@ -62,7 +63,7 @@ async function trySiteScrape(first, last, domain) {
   const found = new Set();
   for (const p of pages) {
     try {
-      const res = await fetch(`https://${domain}/${p}`, { redirect: 'follow', signal: AbortSignal.timeout(8000) });
+      const res = await trackedFetch(`https://${domain}/${p}`, { redirect: 'follow', signal: AbortSignal.timeout(8000) });
       if (!res.ok) continue;
       const html = await res.text();
       const re = new RegExp(`[a-z0-9._%+-]+@${domain.replace(/\./g, '\\.')}`, 'gi');
@@ -102,7 +103,7 @@ async function verifyAddress(email) {
   const key = process.env.HUNTER_API_KEY;
   if (!key) return null;
   try {
-    const res = await fetch(`https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(email)}&api_key=${key}`, { signal: AbortSignal.timeout(10000) });
+    const res = await trackedFetch(`https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(email)}&api_key=${key}`, { signal: AbortSignal.timeout(10000) });
     if (!res.ok) return null;
     const { data } = await res.json();
     if (data && data.status === 'valid' && data.result === 'deliverable' && data.accept_all === false) {

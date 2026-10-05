@@ -30,8 +30,13 @@ import yaml from 'js-yaml';
 // global skill: it would share another account's counters with this fork.
 const SKILL_PACE = process.env.CAREER_FINDER_PACE || '';
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
-const EVENTS = join(REPO, 'data/li-events.tsv');
-const COOLDOWN = join(REPO, 'data/LI_COOLDOWN');
+// CAREER_FINDER_LI_EVENTS overrides the event log path (offline tests). Exported so the request
+// ledger (request-ledger.mjs) can aggregate LinkedIn traffic from THIS log instead of keeping a
+// second LinkedIn counter.
+const EVENTS = process.env.CAREER_FINDER_LI_EVENTS || join(REPO, 'data/li-events.tsv');
+export const EVENTS_PATH = EVENTS;
+// CAREER_FINDER_LI_COOLDOWN overrides (sandboxed --live runs must not read the real account's cooldown).
+const COOLDOWN = process.env.CAREER_FINDER_LI_COOLDOWN || (process.env.CAREER_FINDER_LI_DIR ? join(dirname(process.env.CAREER_FINDER_LI_DIR), 'LI_COOLDOWN') : join(REPO, 'data/LI_COOLDOWN'));
 
 let impl = null;
 try {
@@ -195,7 +200,10 @@ const ACCOUNT_LANES = new Set(['profile', 'search', 'jobsearch', 'connect', 'mes
 export function logEvent({ kind, status = '', note = '' } = {}) {
   try {
     mkdirSync(dirname(EVENTS), { recursive: true });
-    appendFileSync(EVENTS, [new Date().toISOString(), kind, status, note].join('\t') + '\n');
+    // Columns 5-6 (run_id, pid) let request-ledger.mjs attribute events to one run/process.
+    // Readers that only split ts+kind are unaffected.
+    const runId = process.env.CAREER_FINDER_RUN_ID || '';
+    appendFileSync(EVENTS, [new Date().toISOString(), kind, status, String(note).replace(/[\t\n]/g, ' '), runId, process.pid].join('\t') + '\n');
   } catch { /* telemetry must never break a run */ }
 }
 

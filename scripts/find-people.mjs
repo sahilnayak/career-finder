@@ -32,6 +32,7 @@
  */
 
 import { existsSync, readFileSync } from 'fs';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 // INTERACTIVE-ONLY (item #21). Contact discovery spends lookups and touches people data. The scheduled run (morning.mjs) sets UNATTENDED=1 and runs
 // claude with --dangerously-skip-permissions, so this must never fire from cron.
@@ -58,7 +59,7 @@ async function gh(path) {
   try {
     const h = { accept: 'application/vnd.github+json' };
     if (process.env.GITHUB_TOKEN) h.authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-    const r = await fetch(`https://api.github.com${path}`, { headers: h, signal: AbortSignal.timeout(12000) });
+    const r = await trackedFetch(`https://api.github.com${path}`, { headers: h, signal: AbortSignal.timeout(12000) });
     return r.ok ? await r.json() : null;
   } catch { return null; }
 }

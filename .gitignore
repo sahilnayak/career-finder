@@ -69,6 +69,7 @@ data/_candidates.tsv
 # hot tier (5-min crawler) — regenerated every cycle
 data/_hot-candidates.tsv
 data/_hot.log
+data/_request-ledger.tsv
 data/_hot.launchd.log
 data/_hot.launchd.err.log
 data/linkedin-cache/

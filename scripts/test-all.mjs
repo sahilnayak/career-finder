@@ -50,6 +50,8 @@ function readFile(path) { return readFileSync(join(ROOT, path), 'utf-8'); }
 const FIXTURE_PROFILE = join(SCRIPTS_DIR, 'fixtures', 'profile.test.yml');
 process.env.CAREER_FINDER_PROFILE ||= FIXTURE_PROFILE;
 
+// Nothing a test run spawns may write the user's request ledger (mocked traffic is not traffic).
+process.env.CAREER_FINDER_LEDGER_OFF = '1';
 console.log('\n🧪 career-finder test suite\n');
 
 // ── 1. SYNTAX CHECKS ────────────────────────────────────────────
@@ -363,7 +365,7 @@ if (fileExists('VERSION')) {
 // card per page for months, undetected, because the parser lived inside a page.evaluate()
 // closure and could not be run without a browser) and the LinkedIn guardrails.
 console.log('\n🧪 Offline sub-suites');
-for (const suite of ['test-linkedin-parse.mjs', 'test-li-safety.mjs', 'test-linkedin-applyurl.mjs', 'test-hiringcafe.mjs', 'test-ats-families.mjs', 'test-pipeline-wiring.mjs']) {
+for (const suite of ['test-linkedin-parse.mjs', 'test-li-safety.mjs', 'test-linkedin-applyurl.mjs', 'test-hiringcafe.mjs', 'test-ats-families.mjs', 'test-pipeline-wiring.mjs', 'test-discovery-audit.mjs']) {
   try {
     const out = execFileSync('node', [`scripts/${suite}`], { cwd: ROOT, encoding: 'utf8', timeout: 60_000 });
     const m = out.match(/📊 (\d+) passed, (\d+) failed/);

@@ -47,6 +47,7 @@ import { loadTargets } from './targets.mjs';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, copyFileSync } from 'fs';
 import { spawnSync } from 'child_process';
 import path from 'path';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 const ROOT = (process.env.CAREER_OPS_ROOT
   ? path.resolve(process.env.CAREER_OPS_ROOT)
@@ -307,7 +308,7 @@ async function cmdFind() {
   const slowFetch = async (api) => {
     if (api.type === 'workday') return sc.fetchWorkday(api.url);
     const url = api.type === 'greenhouse' ? sc.withGreenhouseContent(api.url) : api.url;
-    const res = await fetch(url, { signal: AbortSignal.timeout(30_000), headers: { 'User-Agent': 'Mozilla/5.0 career-finder-hunt' } });
+    const res = await trackedFetch(url, { signal: AbortSignal.timeout(30_000), headers: { 'User-Agent': 'Mozilla/5.0 career-finder-hunt' } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return sc.XML_PROVIDERS?.has(api.type) ? res.text() : res.json();
   };

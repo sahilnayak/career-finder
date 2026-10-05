@@ -68,6 +68,7 @@
  * Exit codes: 0 ok, 1 profile not set up, 3 one or more queries failed after retries (or rate-limited).
  */
 
+import { record as recordRequest } from './request-ledger.mjs';
 import { readFileSync, appendFileSync, existsSync, writeFileSync } from 'fs';
 import { requireTargets, loadTargets, loadNoise, titleDropped, titleMatches, SEARCH_KEYWORDS, locationMatches, areaLabel } from './role-filters.mjs';
 import * as TG from './targets.mjs';
@@ -89,6 +90,7 @@ Options:
   --max-pages N    pages per query (default 5)
   --sources        diagnostic: ATS family histogram only
   --quiet          summary line only
+  --no-browser     never fall back to the debug Chrome on :9222 (also CAREER_FINDER_NO_BROWSER=1)
   --help           this message
 
 Exit: 0 ok, 1 profile missing, 3 a query failed after retries.`);
@@ -99,6 +101,7 @@ requireTargets();
 const PROFILE = loadTargets();
 
 const DRY = has('--dry-run');
+const NO_BROWSER = has('--no-browser') || process.env.CAREER_FINDER_NO_BROWSER === '1';
 const QUIET = has('--quiet') || (process.env.CAREER_FINDER_QUIET || process.env.CAREER_OPS_QUIET) === '1';
 const DAYS = Number(val('--days', String(PROFILE.pipeline?.hiringcafe_days || 7))) || 7;
 const MAX_PAGES = Number(val('--max-pages', '5'));
@@ -215,9 +218,13 @@ const BOARD_ROOT = {
 // 2026-09-15: even a bare `curl https://hiringcafe.com/` with no query string 403s), but the
 // check costs one round trip and stays correct for the day that stops being true.
 async function fetchViaPlainHttp(url) {
-  const res = await fetch(url, {
-    headers: { 'user-agent': UA, 'accept-language': 'en-US,en;q=0.9', accept: 'text/html' },
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      headers: { 'user-agent': UA, 'accept-language': 'en-US,en;q=0.9', accept: 'text/html' },
+    });
+  } catch (e) { recordRequest(url, { status: 'error' }); throw e; }
+  recordRequest(url, { status: res.status });
   if (!res.ok) {
     const e = new Error(`HTTP ${res.status}`); e.status = res.status;
     e.retryAfter = parseRetryAfter(res.headers.get('retry-after'));
@@ -227,6 +234,7 @@ async function fetchViaPlainHttp(url) {
 }
 
 let cdpChecked = false, cdpOk = false;
+let CF_BLOCKED = false; // set once a 403 is seen with the browser disabled
 
 // Last resort: the shared debug-Chrome profile (port 9222) that LinkedIn and browser-boards
 // already use. Its cookies/TLS fingerprint clear Cloudflare's challenge with no visible
@@ -234,6 +242,10 @@ let cdpChecked = false, cdpOk = false;
 // 200 with __NEXT_DATA__ intact. Never Playwright (banned repo-wide, broken against current
 // Chrome) and never the chrome-devtools MCP (not available in `claude -p` cron mode).
 async function fetchViaBrowser(url) {
+  // --no-browser / CAREER_FINDER_NO_BROWSER=1: never touch the shared :9222 Chrome (e.g. while a
+  // LinkedIn session owns it, or in discovery-audit --live).
+  if (NO_BROWSER) throw new Error('browser fallback disabled (--no-browser)');
+  recordRequest(url, { status: 'cdp' });
   if (!cdpChecked) { cdpChecked = true; cdpOk = !!(await cdpAlive()); }
   if (!cdpOk) throw new Error('debug Chrome not running on :9222 (start with: node scripts/chrome-debug.mjs start)');
   let tab;
@@ -261,6 +273,9 @@ async function fetchPage(searchQuery, page) {
     try {
       html = await fetchViaBrowser(url);
     } catch (e) {
+      // --no-browser + a Cloudflare 403: there is no path that can succeed, so stop the lane now
+      // instead of burning the runtime budget on 15/30/60s backoffs (~157s/role in the 10-04 smoke).
+      if (NO_BROWSER && plainErr.status === 403) { CF_BLOCKED = true; plainErr.blocked = true; plainErr.message += " (Cloudflare block, browser disabled; not retrying)"; throw plainErr; }
       // A 429 on either path is a rate limit; keep the server's Retry-After if it sent one.
       if (plainErr.status === 429 && !e.status) { e.status = 429; }
       if (e.status === 429 && plainErr.retryAfter != null) e.retryAfter = plainErr.retryAfter;
@@ -300,9 +315,10 @@ const BACKOFF_S = [15, 30, 60];
 // Throws after the last attempt; the error carries .status (429 = rate-limited).
 async function collectWithRetry(searchQuery) {
   for (let i = 0; ; i++) {
+    if (CF_BLOCKED) { const e = new Error("HTTP 403 (Cloudflare block, browser disabled; skipped)"); e.status = 403; throw e; }
     try { return await collect(searchQuery); }
     catch (e) {
-      if (i >= BACKOFF_S.length) throw e;
+      if (e.blocked || i >= BACKOFF_S.length) throw e;
       const base = e.status === 429 && e.retryAfter != null ? e.retryAfter : BACKOFF_S[i];
       const wait = Math.min(base, 120) * 1000;
       if (wait > remaining() - 5000) { e.message += ' (runtime budget exhausted)'; throw e; }

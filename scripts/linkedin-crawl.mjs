@@ -54,6 +54,9 @@
  *   node scripts/linkedin-crawl.mjs --no-rescue         # skip the tier-3 Apply-href resolution
  */
 
+// Request ledger: logged-in traffic is counted from li-budget claim() events; importing it
+// registers the exit-time flush to data/_request-ledger.tsv.
+import './request-ledger.mjs';
 import { readFileSync, appendFileSync, writeFileSync, existsSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { cdpAlive, newPage, DEFAULT_PORT } from './cdp.mjs';
@@ -66,6 +69,7 @@ import { verifyCareersPage, workdayApiFromUrl } from './verify-careers-page.mjs'
 import { requireTargets, SEARCH_KEYWORDS, titleDropped, titleMatches, loadNoise, LOCAL, LEADERSHIP_HARD, locationMatches, areaLabel, dealbreakerHit } from './role-filters.mjs';
 import { classifyLocation, remoteAllowed } from './targets.mjs';
 import { liSearchGeos } from './li-geo.mjs';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 requireTargets();
 
@@ -247,7 +251,7 @@ function parsePub(pub) {
 async function getJson(url) {
   try {
     const c = new AbortController(); const t = setTimeout(() => c.abort(), 9000);
-    const r = await fetch(url, { signal: c.signal, headers: { accept: 'application/json' } });
+    const r = await trackedFetch(url, { signal: c.signal, headers: { accept: 'application/json' } });
     clearTimeout(t);
     return r.ok ? await r.json() : null;
   } catch { return null; }
@@ -392,7 +396,7 @@ async function verify(company, cardTitle) {
  */
 async function fetchExactReq(a) {
   try {
-    const r = await fetch(a.apiUrl, { headers: { 'User-Agent': 'career-finder/1.0' } });
+    const r = await trackedFetch(a.apiUrl, { headers: { 'User-Agent': 'career-finder/1.0' } });
     if (!r.ok) return null;
     const j = await r.json();
     if (a.atsType === 'greenhouse')

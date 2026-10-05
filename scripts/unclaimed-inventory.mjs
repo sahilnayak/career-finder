@@ -25,6 +25,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { requireTargets, isPrimaryRole } from './targets.mjs';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 const profile = requireTargets();
 
@@ -100,7 +101,7 @@ async function liveness(c) {
   const t = apiFor(c.url);
   if (!t) return { ...c, live: 'unknown', reason: 'no ATS API for this url; verify by hand' };
   try {
-    const r = await fetch(t.api, { signal: AbortSignal.timeout(15000),
+    const r = await trackedFetch(t.api, { signal: AbortSignal.timeout(15000),
                                    headers: { 'user-agent': 'career-finder/unclaimed-inventory' } });
     if (!r.ok) return { ...c, live: 'closed', reason: `HTTP ${r.status}` };
     const j = await r.json();

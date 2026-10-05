@@ -27,6 +27,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 import { parseAtsUrl, applyUrlForJob } from './linkedin-applyurl.mjs';
 import { loadTargets } from './targets.mjs';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const argv = process.argv.slice(2);
@@ -66,7 +67,7 @@ function pick(atsType, j, a) {
 
 async function viaApi(a) {
   try {
-    const r = await fetch(a.apiUrl, { headers: { 'User-Agent': 'career-finder/1.0' } });
+    const r = await trackedFetch(a.apiUrl, { headers: { 'User-Agent': 'career-finder/1.0' } });
     if (!r.ok) return null;
     const got = pick(a.atsType, await r.json(), a);
     return got?.body ? { a, ...got } : null;
@@ -94,7 +95,7 @@ export async function fetchPosting(url, role) {
     // is fine and the requisition is CLOSED. Reporting those as the same thing hid real signal.
     if (a0.atsType === 'ashby') {
       try {
-        const r = await fetch(a0.apiUrl, { headers: { 'User-Agent': 'career-finder/1.0' } });
+        const r = await trackedFetch(a0.apiUrl, { headers: { 'User-Agent': 'career-finder/1.0' } });
         if (r.ok) {
           const n = ((await r.json())?.jobs || []).length;
           if (n > 0) return { closed: true, detail: `req not on the ${a0.slug} board (${n} live jobs) — closed` };
@@ -116,7 +117,7 @@ export async function fetchPosting(url, role) {
       if (got) return { ...got, via: 'apply-href' };
     }
     if (res?.raw) {
-      const html = await fetch(res.raw, { headers: { 'User-Agent': UA } }).then(r => r.ok ? r.text() : '').catch(() => '');
+      const html = await trackedFetch(res.raw, { headers: { 'User-Agent': UA } }).then(r => r.ok ? r.text() : '').catch(() => '');
       const body = htmlToText(html);
       if (body.length > 400) return { a: res.ats || { atsType: 'html', slug: null, jobId: null }, title: res.title || role, url: res.raw, body, via: 'apply-href-html' };
     }
@@ -149,7 +150,7 @@ export async function fetchPosting(url, role) {
                   : fam === 'ashby' ? `https://api.ashbyhq.com/posting-api/job-board/${root[2]}`
                   : `https://api.lever.co/v0/postings/${root[2]}?mode=json`;
     try {
-      const r = await fetch(listUrl, { headers: { 'User-Agent': 'career-finder/1.0' } });
+      const r = await trackedFetch(listUrl, { headers: { 'User-Agent': 'career-finder/1.0' } });
       if (r.ok) {
         const j = await r.json();
         const list = fam === 'lever' ? (Array.isArray(j) ? j : []) : (j.jobs || []);
@@ -173,7 +174,7 @@ export async function fetchPosting(url, role) {
   //    JS-only ones (Workday) return chrome and are correctly reported as unfetched.
   if (a0 && a0.atsType !== 'unknown' || /^https?:/.test(url)) {
     try {
-      const r = await fetch(url, { headers: { 'User-Agent': UA }, redirect: 'follow' });
+      const r = await trackedFetch(url, { headers: { 'User-Agent': UA }, redirect: 'follow' });
       if (r.ok) {
         const body = htmlToText(await r.text());
         if (body.length > 800) return { a: a0 || { atsType: 'html', slug: null, jobId: null }, title: role, url, body, via: 'careers-html' };

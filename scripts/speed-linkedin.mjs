@@ -20,6 +20,7 @@
  * Output: human table by default; `--json` emits the survivor array for piping into scoring.
  */
 
+import { record as recordRequest } from './request-ledger.mjs';
 import { readFileSync, existsSync } from 'fs';
 import { requireTargets, titleDropped, loadNoise, SEARCH_KEYWORDS, locationMatches, areaLabel, dealbreakerHit } from './role-filters.mjs';
 import { liSearchGeos } from './li-geo.mjs';
@@ -53,8 +54,9 @@ async function fetchTitle(kw, geo = '') {
   const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(kw)}${geo ? `&${geo}` : ''}&f_TPR=${fTPR}&start=0`;
   try {
     const r = await fetch(url, { headers: { 'User-Agent': UA } });
+    recordRequest(url, { status: r.status }); // ledger -> li-events `http` row; li-budget stays the counter
     return r.ok ? await r.text() : '';
-  } catch { return ''; }
+  } catch { recordRequest(url, { status: 'error' }); return ''; }
 }
 
 function parseCards(html) {

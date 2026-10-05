@@ -26,6 +26,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, copyFileSync } from 'fs';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const INDEX = `${ROOT}data/company-index.tsv`;
@@ -109,7 +110,7 @@ async function probe(url) {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 8000);
-    const r = await fetch(url, { signal: ctrl.signal, headers: { accept: 'application/json' } });
+    const r = await trackedFetch(url, { signal: ctrl.signal, headers: { accept: 'application/json' } });
     clearTimeout(t);
     if (!r.ok) return null;
     return await r.json();

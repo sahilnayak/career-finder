@@ -25,6 +25,7 @@ import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
 import { detectApi, fetchJson } from './scan-core.mjs';
 import { detectFamily } from './probe-ats-core.mjs';
 import { requireTargets, locationMatches, areaLabel } from './targets.mjs';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 const INDEX_PATH = 'data/company-index.tsv';
 const HEADER = 'company\thq\tcareers_url\tats_type\tats_api_url\tsource\tdate_added\tlast_scanned\tlast_status\n';
@@ -97,7 +98,7 @@ const YC_APP = '45BWZJ1SGC';
 
 async function ycKey() {
   if (process.env.YC_ALGOLIA_KEY) return process.env.YC_ALGOLIA_KEY;
-  const r = await fetch('https://www.ycombinator.com/companies', {
+  const r = await trackedFetch('https://www.ycombinator.com/companies', {
     headers: { 'user-agent': UA }, signal: AbortSignal.timeout(20000) });
   if (!r.ok) throw new Error(`yc page HTTP ${r.status}`);
   const m = (await r.text()).match(/window\.AlgoliaOpts\s*=\s*(\{.*?\})\s*[;<]/s);
@@ -113,7 +114,7 @@ async function fetchYC() {
     const hits = [];
     // isHiring:true cuts the directory from ~6,200 companies to ~1,478, the only half worth indexing.
     for (let page = 0; page < 4; page++) {
-      const r = await fetch(`https://${YC_APP.toLowerCase()}-dsn.algolia.net/1/indexes/YCCompany_production/query`, {
+      const r = await trackedFetch(`https://${YC_APP.toLowerCase()}-dsn.algolia.net/1/indexes/YCCompany_production/query`, {
         method: 'POST',
         headers: { 'X-Algolia-Application-Id': YC_APP, 'X-Algolia-API-Key': key, 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: `hitsPerPage=1000&page=${page}&query=&filters=isHiring:true` }),
@@ -177,7 +178,7 @@ async function fetchYC() {
       const root = h.website.replace(/\/+$/, '');
       for (const path of ['/careers', '/jobs', '']) {
         try {
-          const r = await fetch(root + path, { headers: { 'user-agent': UA }, redirect: 'follow',
+          const r = await trackedFetch(root + path, { headers: { 'user-agent': UA }, redirect: 'follow',
                                                signal: AbortSignal.timeout(12000) });
           if (!r.ok) continue;
           const m = (await r.text()).match(ATS_LINK);

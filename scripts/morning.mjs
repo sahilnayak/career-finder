@@ -102,6 +102,9 @@ const opt = (k, d) => { const i = argv.indexOf(k); return i !== -1 && argv[i + 1
 const DRY = flag('--dry-run');
 const MODE = opt('--mode', 'daily');
 const SKIP = new Set(opt('--skip', '').split(',').map(s => s.trim()).filter(Boolean));
+// One run id for this morning run and every lane it spawns (children inherit the env), so the
+// request ledger can total the whole run. See scripts/request-ledger.mjs.
+if (!process.env.CAREER_FINDER_RUN_ID) process.env.CAREER_FINDER_RUN_ID = `${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}-${MODE}-${process.pid}`;
 const ONLY = new Set((process.env.MORNING_ONLY || '').split(',').map(s => s.trim()).filter(Boolean));
 /** A lane name matches a selector set by exact name or by any `:`-prefix (`linkedin`, `linkedin:crawl`). */
 const selected = (set, name) => { const p = name.split(':'); for (let i = 1; i <= p.length; i++) if (set.has(p.slice(0, i).join(':'))) return true; return false; };
@@ -800,6 +803,12 @@ const { failed, quotaShort } = splitFailures(results);
 const qLine = DRY ? '' : quotaLine(q, quotaShort, PRIMARY);
 if (qLine) console.log(`\n${qLine}`);
 if (failed.length) {
+if (!DRY) {
+  try {
+    const { readLedger, aggregate, formatSummary } = await import('./request-ledger.mjs');
+    console.log('\n' + formatSummary(aggregate(readLedger({ runId: process.env.CAREER_FINDER_RUN_ID })), `REQUEST LEDGER run ${process.env.CAREER_FINDER_RUN_ID}`));
+  } catch (e) { console.log(`\nREQUEST LEDGER: unavailable (${e.message})`); }
+}
   console.log(`\nFAILED LANES (${failed.length}):`);
   for (const [n, st, why] of failed) console.log(`  ${n}  ${st}${n.startsWith('linkedin') && why ? '  — ' + why : ''}  (see ${PLOG})`);
 }

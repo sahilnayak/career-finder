@@ -10,6 +10,7 @@
  * Zero Claude API tokens — pure HTTP + JSON.
  */
 
+import { record as recordRequest } from './request-ledger.mjs';
 import { classifyLocation as targetsClassify, locationMatches, titleMatches, hasTargets } from './targets.mjs';
 import * as targetsMod from './targets.mjs';
 import { readFileSync, existsSync, appendFileSync } from 'fs';
@@ -502,7 +503,10 @@ export async function fetchJson(url, { method = 'GET', body, expect = 'json' } =
   try {
     const init = { signal: controller.signal, method, headers: { 'User-Agent': 'Mozilla/5.0 career-finder-scan' } };
     if (body !== undefined) { init.headers['Content-Type'] = 'application/json'; init.headers['Accept'] = 'application/json'; init.body = JSON.stringify(body); }
-    const res = await fetch(url, init);
+    let res;
+    try { res = await fetch(url, init); }
+    catch (e) { recordRequest(url, { status: e?.name === 'AbortError' ? 'timeout' : 'error' }); throw e; }
+    recordRequest(url, { status: res.status });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return expect === 'text' ? await res.text() : await res.json();
   } finally { clearTimeout(timer); }
@@ -623,6 +627,7 @@ export async function fetchTaleo(api, { maxJobs = ATS_MAX_JOBS } = {}) {
         jsfCmdId: 'rlPager.pageNext', ftlcompclass: 'PagerComponent', ftlcallback: 'ftlPager_processResponse', ftlajaxid: 'ftlx1',
         'rlPager.currentPage': String(p), lang: 'en' });
       const res = await fetch(ajax, { method: 'POST', body, signal: ctl.signal, headers: { 'User-Agent': 'Mozilla/5.0 career-finder-scan', 'Content-Type': 'application/x-www-form-urlencoded' } });
+      recordRequest(ajax, { status: res.status });
       return res.ok ? await res.text() : '';
     } catch { return ''; } finally { clearTimeout(t); }
   };

@@ -11,6 +11,7 @@
  * Zero LLM cost — plain HTTP against public endpoints. See probe-ats.mjs for the history.
  */
 
+import { record as recordRequest } from './request-ledger.mjs';
 import { detectApi, detectEnterprise, SUPPORTED_FAMILIES } from './scan-core.mjs';
 
 // Corporate suffixes dropped to form the "core" name. Order of variants returned (most specific
@@ -233,6 +234,7 @@ export async function tryUrl({ api, post, text }) {
       body: post ? JSON.stringify({ appliedFacets: {}, limit: 20, offset: 0, searchText: '' }) : undefined,
       signal: ctl.signal,
     });
+    recordRequest(api, { status: res.status });
     // Workday status codes carry NO usable tenant signal — verified 2026-07-29:
     // nvidia.wd5/External returns 404 even though wd5 IS nvidia's real shard (the
     // site name is just wrong), while the wrong shard nvidia.wd1 returns 422. An
@@ -247,7 +249,7 @@ export async function tryUrl({ api, post, text }) {
     // RSS/XML families (teamtailor) need the raw body; everything else is JSON.
     if (text) return await res.text();
     return await res.json();
-  } catch { return null; }
+  } catch (e) { if (e?.name === 'AbortError' || e?.name === 'TypeError') recordRequest(api, { status: e.name === 'AbortError' ? 'timeout' : 'error' }); return null; }
   finally { clearTimeout(t); }
 }
 

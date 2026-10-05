@@ -34,6 +34,7 @@
 
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'fs';
 import { loadNoise } from './role-filters.mjs';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 const argv = process.argv.slice(2);
 const val = (f) => { const i = argv.indexOf(f); return i !== -1 ? argv[i + 1] : null; };
@@ -54,7 +55,7 @@ const saveCache = () => writeFileSync(CACHE, JSON.stringify(cache, null, 2) + '\
 /** Ask a public search index for the employer's Workday URL. Returns {tenant, shard, site, url}. */
 async function searchTenant(name) {
   const q = encodeURIComponent(`"${name}" site:myworkdayjobs.com`);
-  const res = await fetch(`https://html.duckduckgo.com/html/?q=${q}`, UA);
+  const res = await trackedFetch(`https://html.duckduckgo.com/html/?q=${q}`, UA);
   const body = await res.text();
   let text = body;
   try { text = decodeURIComponent(body); } catch { /* some bodies are not fully percent-encoded */ }
@@ -80,7 +81,7 @@ async function verify(tenant, shard, site) {
   const sites = site ? [site] : ['External', `${tenant.toUpperCase()}_Careers`, 'Careers', 'External_Career_Site'];
   for (const s of sites) {
     try {
-      const r = await fetch(`https://${tenant}.${shard}.myworkdayjobs.com/wday/cxs/${tenant}/${s}/jobs`, {
+      const r = await trackedFetch(`https://${tenant}.${shard}.myworkdayjobs.com/wday/cxs/${tenant}/${s}/jobs`, {
         method: 'POST',
         headers: { accept: 'application/json', 'content-type': 'application/json', ...UA.headers },
         body: JSON.stringify({ appliedFacets: {}, limit: 1, offset: 0, searchText: '' }),

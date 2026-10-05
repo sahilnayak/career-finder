@@ -38,6 +38,7 @@
 
 import { readFileSync, appendFileSync, existsSync } from 'fs';
 import { REMOTE, LOCAL, loadNoise, titleDropped, TITLE_KEEP, SEARCH_KEYWORDS, remoteOkFor, requireTargets } from './role-filters.mjs';
+import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 const PROFILE = requireTargets();
 
@@ -91,7 +92,7 @@ for (const q of QUERIES) {
     const url = `${API}?query=${encodeURIComponent(q)}&location=${encodeURIComponent(loc)}`;
     let jobs = [];
     try {
-      const r = await fetch(url, { headers: UA, signal: AbortSignal.timeout(20000) });
+      const r = await trackedFetch(url, { headers: UA, signal: AbortSignal.timeout(20000) });
       if (!r.ok) { log(`  ${q} @ ${loc}: HTTP ${r.status}`); continue; }
       jobs = (await r.json()).jobs || [];
     } catch (e) { log(`  ${q} @ ${loc}: ${e.name}`); continue; }
