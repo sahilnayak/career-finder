@@ -1,0 +1,377 @@
+{
+ "offset": 0,
+ "limit": 3,
+ "totalFound": 317,
+ "content": [
+  {
+   "id": "744000153357214",
+   "name": "Director, Strategic Sourcing - Heads & Media",
+   "uuid": "aa995a7a-f52b-4150-a17e-8dbe60b01ff7",
+   "jobAdId": "36597559-8895-4287-aa02-f77d69b3bdcc",
+   "defaultJobAd": true,
+   "refNumber": "REF34594S",
+   "company": {
+    "identifier": "WesternDigital",
+    "name": "Western Digital"
+   },
+   "releasedDate": "2026-10-04T01:28:47.055Z",
+   "location": {
+    "city": "Fujisawa",
+    "region": "Kanagawa",
+    "country": "jp",
+    "remote": false,
+    "hybrid": false,
+    "latitude": "35.3391654",
+    "longitude": "139.49014",
+    "fullLocation": "Fujisawa, Kanagawa, Japan"
+   },
+   "industry": {
+    "id": "computer_hardware",
+    "label": "Computer Hardware"
+   },
+   "department": {},
+   "function": {
+    "id": "supply_chain",
+    "label": "Supply Chain"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "61e861216796ff005736d217",
+     "fieldLabel": "Job Type (exemption status)",
+     "valueId": "5f54df38-41d3-4559-9067-0b50c42e6e4f",
+     "valueLabel": "Exempt position - Please see related compensation & benefits details below"
+    },
+    {
+     "fieldId": "625777e42ea6bf323c991b94",
+     "fieldLabel": "Positions",
+     "valueId": "P-0000197084",
+     "valueLabel": "Director, Strategic Sourcing - Heads & Media (Unfilled)--P-0000197084"
+    },
+    {
+     "fieldId": "60706a574748e43c47b1856e",
+     "fieldLabel": "Business Function",
+     "valueId": "Strategic Sourcing",
+     "valueLabel": "Strategic Sourcing"
+    },
+    {
+     "fieldId": "606f52f879838c3f1a5df578",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "Western Digital"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "jp",
+     "valueLabel": "Japan"
+    },
+    {
+     "fieldId": "607069e34bb1b86edc4b1150",
+     "fieldLabel": "Job Profile",
+     "valueId": "107690",
+     "valueLabel": "Director, Strategic Sourcing - 107690"
+    },
+    {
+     "fieldId": "60706c0fab6dab4d36f48132",
+     "fieldLabel": "Company",
+     "valueId": "CO_HGST Japan Ltd",
+     "valueLabel": "JP-Western Digital Technologies GK--CO_HGST Japan Ltd"
+    },
+    {
+     "fieldId": "60706ba04748e43c47b18571",
+     "fieldLabel": "Work Location",
+     "valueId": "LOC_HGST_FUJ",
+     "valueLabel": "Fujisawa Office--LOC_HGST_FUJ"
+    },
+    {
+     "fieldId": "60706bd264ff7425248e65e9",
+     "fieldLabel": "Location (Secondary)",
+     "valueId": "LOCATION-3-262",
+     "valueLabel": "Singapore Office--LOCATION-3-262"
+    },
+    {
+     "fieldId": "607066faab6dab4d36f48130",
+     "fieldLabel": "Requisition Type",
+     "valueId": "f6e645f7-335d-4432-b11b-c31381d1a39f",
+     "valueLabel": "Professional"
+    },
+    {
+     "fieldId": "634d66856a77a2043e8bcc3e",
+     "fieldLabel": "Approved Job Grade",
+     "valueLabel": "M110"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/westerndigital/postings/744000153357214",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  },
+  {
+   "id": "744000153283669",
+   "name": "Technician 4, Manufacturing Equipment Maintenance",
+   "uuid": "7af7b046-9028-49c8-bba8-8f936b67cfbd",
+   "jobAdId": "bf3a51b6-e317-4e38-80a0-2e7f10b1a2ec",
+   "defaultJobAd": true,
+   "refNumber": "REF34661R",
+   "company": {
+    "identifier": "WesternDigital",
+    "name": "Western Digital"
+   },
+   "releasedDate": "2026-10-03T00:00:58.530Z",
+   "location": {
+    "city": "Fremont",
+    "region": "CA",
+    "country": "us",
+    "remote": false,
+    "hybrid": false,
+    "latitude": "37.5485396",
+    "longitude": "-121.988583",
+    "fullLocation": "Fremont, CA, United States"
+   },
+   "industry": {
+    "id": "computer_hardware",
+    "label": "Computer Hardware"
+   },
+   "department": {},
+   "function": {
+    "id": "manufacturing",
+    "label": "Manufacturing"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "61e861216796ff005736d217",
+     "fieldLabel": "Job Type (exemption status)",
+     "valueId": "f464bc93-cf91-46e3-9d02-1393d111a99c",
+     "valueLabel": "Non-Exempt position - Please see related compensation & benefits details below"
+    },
+    {
+     "fieldId": "625777e42ea6bf323c991b94",
+     "fieldLabel": "Positions",
+     "valueId": "P-0000090058",
+     "valueLabel": "Technician 4, Manufacturing Equipment Maintenance (Unfilled)-Rommel Finuliar (Terminated)--P-0000090058"
+    },
+    {
+     "fieldId": "60706a574748e43c47b1856e",
+     "fieldLabel": "Business Function",
+     "valueId": "Manufacturing Equipment Maintenance",
+     "valueLabel": "Manufacturing Equipment Maintenance"
+    },
+    {
+     "fieldId": "69af98e74cf456484ba38b06",
+     "fieldLabel": "Business Group",
+     "valueId": "d916faf0-4658-4dc0-8f0b-5a41ab67b3f3",
+     "valueLabel": "Western Digital Technologies, Inc."
+    },
+    {
+     "fieldId": "606f52f879838c3f1a5df578",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "Western Digital"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "us",
+     "valueLabel": "United States"
+    },
+    {
+     "fieldId": "607069e34bb1b86edc4b1150",
+     "fieldLabel": "Job Profile",
+     "valueId": "101754",
+     "valueLabel": "Technician 4, Manufacturing Equipment Maintenance - 101754"
+    },
+    {
+     "fieldId": "60706c0fab6dab4d36f48132",
+     "fieldLabel": "Company",
+     "valueId": "CO_WD Western Digital Technologies, Inc.",
+     "valueLabel": "US-Western Digital Technologies, Inc.--CO_WD Western Digital Technologies, Inc."
+    },
+    {
+     "fieldId": "69af99ee1613dbfae2c0f4d8",
+     "fieldLabel": "Division",
+     "valueId": "def505ff-6f2e-47e7-b3c2-6c6f6629ba6a",
+     "valueLabel": "United States"
+    },
+    {
+     "fieldId": "60706d5a64ff7425248e65ea",
+     "fieldLabel": "Work Shift",
+     "valueId": "WDT ASHIFT125",
+     "valueLabel": "FR A Shift (Sun-Tue & alternating Sat, 5pm-5am) (United States of America)--WDT ASHIFT125"
+    },
+    {
+     "fieldId": "60706ba04748e43c47b18571",
+     "fieldLabel": "Work Location",
+     "valueId": "LOC_WDT_USCA13",
+     "valueLabel": "Fremont Office--LOC_WDT_USCA13"
+    },
+    {
+     "fieldId": "607066faab6dab4d36f48130",
+     "fieldLabel": "Requisition Type",
+     "valueId": "f6e645f7-335d-4432-b11b-c31381d1a39f",
+     "valueLabel": "Professional"
+    },
+    {
+     "fieldId": "634d66856a77a2043e8bcc3e",
+     "fieldLabel": "Approved Job Grade",
+     "valueLabel": "S104"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/westerndigital/postings/744000153283669",
+   "creator": {
+    "name": "Heather Kiuttu"
+   },
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  },
+  {
+   "id": "744000153245279",
+   "name": "Tax Manager",
+   "uuid": "93bcc140-d140-4243-93c3-35e72d409351",
+   "jobAdId": "7e0cc1d4-6cfd-4f6a-abd0-84bc5314ae9e",
+   "defaultJobAd": true,
+   "refNumber": "REF34699Y",
+   "company": {
+    "identifier": "WesternDigital",
+    "name": "Western Digital"
+   },
+   "releasedDate": "2026-10-02T17:38:07.121Z",
+   "location": {
+    "city": "Irvine",
+    "region": "CA",
+    "country": "us",
+    "remote": false,
+    "hybrid": true,
+    "hybridDescription": "in office Monday/Wednesday/Thursday",
+    "latitude": "33.6845673",
+    "longitude": "-117.8265049",
+    "fullLocation": "Irvine, CA, United States"
+   },
+   "industry": {
+    "id": "computer_hardware",
+    "label": "Computer Hardware"
+   },
+   "department": {},
+   "function": {
+    "id": "finance",
+    "label": "Finance"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "61710328e65c003e53504dd0",
+     "fieldLabel": "Salary Range",
+     "valueId": "114,700.00-152,900.00",
+     "valueLabel": "114,700.00-152,900.00"
+    },
+    {
+     "fieldId": "625777e42ea6bf323c991b94",
+     "fieldLabel": "Positions",
+     "valueId": "P-NP",
+     "valueLabel": "New Position--P-NP"
+    },
+    {
+     "fieldId": "60706a574748e43c47b1856e",
+     "fieldLabel": "Business Function",
+     "valueId": "Tax",
+     "valueLabel": "Tax"
+    },
+    {
+     "fieldId": "69af98e74cf456484ba38b06",
+     "fieldLabel": "Business Group",
+     "valueId": "d916faf0-4658-4dc0-8f0b-5a41ab67b3f3",
+     "valueLabel": "Western Digital Technologies, Inc."
+    },
+    {
+     "fieldId": "606f52f879838c3f1a5df578",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "Western Digital"
+    },
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "us",
+     "valueLabel": "United States"
+    },
+    {
+     "fieldId": "607069e34bb1b86edc4b1150",
+     "fieldLabel": "Job Profile",
+     "valueId": "100787",
+     "valueLabel": "Accountant 4, Tax - 100787"
+    },
+    {
+     "fieldId": "60706c0fab6dab4d36f48132",
+     "fieldLabel": "Company",
+     "valueId": "CO_WD Western Digital Technologies, Inc.",
+     "valueLabel": "US-Western Digital Technologies, Inc.--CO_WD Western Digital Technologies, Inc."
+    },
+    {
+     "fieldId": "69af99ee1613dbfae2c0f4d8",
+     "fieldLabel": "Division",
+     "valueId": "def505ff-6f2e-47e7-b3c2-6c6f6629ba6a",
+     "valueLabel": "United States"
+    },
+    {
+     "fieldId": "60706ba04748e43c47b18571",
+     "fieldLabel": "Work Location",
+     "valueId": "LOC_WDT_USCA01",
+     "valueLabel": "Irvine Office--LOC_WDT_USCA01"
+    },
+    {
+     "fieldId": "60706bd264ff7425248e65e9",
+     "fieldLabel": "Location (Secondary)",
+     "valueId": "LOC_WDT_USCA23",
+     "valueLabel": "San Jose Great Oaks Headquarters--LOC_WDT_USCA23"
+    },
+    {
+     "fieldId": "607066faab6dab4d36f48130",
+     "fieldLabel": "Requisition Type",
+     "valueId": "f6e645f7-335d-4432-b11b-c31381d1a39f",
+     "valueLabel": "Professional"
+    },
+    {
+     "fieldId": "634d66856a77a2043e8bcc3e",
+     "fieldLabel": "Approved Job Grade",
+     "valueLabel": "P108"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/westerndigital/postings/744000153245279",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  }
+ ]
+}

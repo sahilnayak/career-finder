@@ -1,0 +1,175 @@
+{
+ "jobs": [
+  {
+   "id": "8fb1615c-34bf-47c4-a1d1-b7b2f836bbd3",
+   "title": "Technical Program Manager, Compute Infrastructure",
+   "department": "Technical Program Management",
+   "team": "Technical Program Management",
+   "employmentType": "FullTime",
+   "location": "San Francisco",
+   "shouldDisplayCompensationOnJobPostings": true,
+   "secondaryLocations": [],
+   "publishedAt": "2026-03-12T16:38:15.322+00:00",
+   "isListed": true,
+   "isRemote": null,
+   "workplaceType": null,
+   "address": {
+    "postalAddress": {
+     "addressRegion": "California",
+     "addressCountry": "United States",
+     "addressLocality": "San Francisco"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/openai/8fb1615c-34bf-47c4-a1d1-b7b2f836bbd3",
+   "applyUrl": "https://jobs.ashbyhq.com/openai/8fb1615c-34bf-47c4-a1d1-b7b2f836bbd3/application",
+   "compensation": {
+    "compensationTierSummary": "$257K – $335K • Offers Equity",
+    "scrapeableCompensationSalarySummary": "$257K - $335K",
+    "compensationTiers": [
+     {
+      "id": "33e464a3-4ff9-40a4-bbd6-6dcb65d23c43",
+      "tierSummary": "$257K – $335K • Offers Equity",
+      "title": null,
+      "additionalInformation": null,
+      "components": [
+       {
+        "id": "daa3a561-a504-4bd5-99ac-3ed7fd060cf8",
+        "summary": "$257K – $335K",
+        "compensationType": "Salary",
+        "interval": "1 YEAR",
+        "currencyCode": "USD",
+        "minValue": 257000,
+        "maxValue": 335000
+       },
+       {
+        "id": "ae7ec4d0-7ec6-4186-b4c2-e4b6753df9e7",
+        "summary": "Offers Equity",
+        "compensationType": "EquityCashValue",
+        "interval": "1 YEAR",
+        "currencyCode": "USD",
+        "minValue": null,
+        "maxValue": null
+       }
+      ]
+     }
+    ],
+    "summaryComponents": [
+     {
+      "compensationType": "Salary",
+      "interval": "1 YEAR",
+      "currencyCode": "USD",
+      "minValue": 257000,
+      "maxValue": 335000
+     },
+     {
+      "compensationType": "EquityCashValue",
+      "interval": "1 YEAR",
+      "currencyCode": "USD",
+      "minValue": null,
+      "maxValue": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "240d459b-696d-43eb-8497-fab3e56ecd9b",
+   "title": "Research Engineer",
+   "department": "Research",
+   "team": "Research",
+   "employmentType": "FullTime",
+   "location": "San Francisco",
+   "shouldDisplayCompensationOnJobPostings": true,
+   "secondaryLocations": [],
+   "publishedAt": "2025-04-05T00:03:20.653+00:00",
+   "isListed": true,
+   "isRemote": null,
+   "workplaceType": null,
+   "address": {
+    "postalAddress": {
+     "addressRegion": "California",
+     "addressCountry": "United States",
+     "addressLocality": "San Francisco"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/openai/240d459b-696d-43eb-8497-fab3e56ecd9b",
+   "applyUrl": "https://jobs.ashbyhq.com/openai/240d459b-696d-43eb-8497-fab3e56ecd9b/application",
+   "compensation": {
+    "compensationTierSummary": "$250K – $445K • Offers Equity",
+    "scrapeableCompensationSalarySummary": "$250K - $445K",
+    "compensationTiers": [
+     {
+      "id": "4747585e-c075-4d8e-8107-8903aa77f4a9",
+      "tierSummary": "San Francisco $250K – $445K • Offers Equity",
+      "title": null,
+      "additionalInformation": null,
+      "components": [
+       {
+        "id": "c2046721-f7e5-4b2c-bf4e-aec9500cc38d",
+        "summary": "Offers Equity",
+        "compensationType": "EquityCashValue",
+        "interval": "1 YEAR",
+        "currencyCode": "USD",
+        "minValue": null,
+        "maxValue": null
+       },
+       {
+        "id": "2e7143d4-d113-4484-94c8-9ce25f4d402c",
+        "summary": "San Francisco $250K – $445K",
+        "compensationType": "Salary",
+        "interval": "1 YEAR",
+        "currencyCode": "USD",
+        "minValue": 250000,
+        "maxValue": 445000
+       }
+      ]
+     }
+    ],
+    "summaryComponents": [
+     {
+      "compensationType": "EquityCashValue",
+      "interval": "1 YEAR",
+      "currencyCode": "USD",
+      "minValue": null,
+      "maxValue": null
+     },
+     {
+      "compensationType": "Salary",
+      "interval": "1 YEAR",
+      "currencyCode": "USD",
+      "minValue": 250000,
+      "maxValue": 445000
+     }
+    ]
+   }
+  },
+  {
+   "id": "18f58952-c242-4562-8732-073a0ae8029e",
+   "title": "Account Director, Large Enterprise - Tokyo",
+   "department": "Go To Market",
+   "team": "Sales",
+   "employmentType": "FullTime",
+   "location": "Tokyo, Japan",
+   "shouldDisplayCompensationOnJobPostings": false,
+   "secondaryLocations": [],
+   "publishedAt": "2026-01-23T00:17:18.483+00:00",
+   "isListed": true,
+   "isRemote": null,
+   "workplaceType": null,
+   "address": {
+    "postalAddress": {
+     "addressCountry": "Japan",
+     "addressLocality": "Tokyo"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/openai/18f58952-c242-4562-8732-073a0ae8029e",
+   "applyUrl": "https://jobs.ashbyhq.com/openai/18f58952-c242-4562-8732-073a0ae8029e/application",
+   "compensation": {
+    "compensationTierSummary": null,
+    "scrapeableCompensationSalarySummary": null,
+    "compensationTiers": [],
+    "summaryComponents": []
+   }
+  }
+ ],
+ "apiVersion": "1"
+}

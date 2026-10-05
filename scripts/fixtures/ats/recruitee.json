@@ -1,0 +1,352 @@
+{
+ "offers": [
+  {
+   "country": "Japan",
+   "options_salutation": "off",
+   "position": 217,
+   "options_cover_letter": "off",
+   "careers_url": "https://aikidosecurity.recruitee.com/o/account-executive-japan",
+   "published_at": "2026-09-30 15:15:28 UTC",
+   "options_title": "off",
+   "education_code": "bachelor_degree",
+   "locations": [
+    {
+     "id": 299737,
+     "name": "Tokyo",
+     "state": "Tokyo",
+     "country": "Japan",
+     "city": "Tokyo",
+     "translations": {
+      "en": {
+       "name": "Tokyo",
+       "city": "Tokyo",
+       "postal_code": null,
+       "street": null,
+       "note": null
+      }
+     },
+     "country_code": "JP",
+     "state_code": "13",
+     "postal_code": null,
+     "street": null,
+     "note": null
+    }
+   ],
+   "min_hours": null,
+   "country_code": "JP",
+   "highlight": null,
+   "dynamic_fields": [],
+   "max_hours_per_week": null,
+   "locations_question_type": "multiple_choice",
+   "options_phone": "required",
+   "updated_at": "2026-09-30 19:14:11 UTC",
+   "created_at": "2026-09-30 15:00:19 UTC",
+   "cover_image": null,
+   "postal_code": null,
+   "title": "Account Executive Japan",
+   "sharing_description": "We're looking for our first all-round salesperson to explore the market. ",
+   "location": "Remote job",
+   "locations_question": "What is your preferred work location?",
+   "locations_question_required": true,
+   "close_at": null,
+   "sharing_image": "https://recruitee-main.s3.eu-central-1.amazonaws.com/offers/2765944/normal_sharing_c425rd1k861m.jpg",
+   "state_code": "13",
+   "company_name": "Aikido Security",
+   "city": "Tokyo",
+   "slug": "account-executive-japan",
+   "translations": {
+    "en": {
+     "title": "Account Executive Japan",
+     "highlight": null,
+     "sharing_image": "https://recruitee-main.s3.eu-central-1.amazonaws.com/offers/2765944/normal_sharing_c425rd1k861m.jpg",
+     "sharing_title": "Account Executive Japan",
+     "sharing_description": "We're looking for our first all-round salesperson to explore the market. ",
+     "locations_question": "What is your preferred work location?"
+    }
+   },
+   "on_site": false,
+   "mailbox_email": "job.h86m2@aikidosecurity.recruitee.com",
+   "options_photo": "off",
+   "careers_apply_url": "https://aikidosecurity.recruitee.com/o/account-executive-japan/c/new",
+   "experience_code": "mid_level",
+   "remote": true,
+   "options_cv": "required",
+   "salary": {
+    "max": null,
+    "min": null,
+    "period": null,
+    "currency": null
+   },
+   "employment_type_code": "fulltime_permanent",
+   "guid": "h86m2",
+   "id": 2765944,
+   "open_questions": [
+    {
+     "id": 4406182,
+     "position": 1,
+     "options": {},
+     "required": true,
+     "body": "Do you have experience selling in the dev/security industry?",
+     "kind": "boolean",
+     "translations": {
+      "en": {
+       "body": "Do you have experience selling in the dev/security industry?"
+      }
+     },
+     "open_question_options": []
+    },
+    {
+     "id": 4406183,
+     "position": 2,
+     "options": {},
+     "required": false,
+     "body": "LinkedIn URL",
+     "kind": "string",
+     "translations": {
+      "en": {
+       "body": "LinkedIn URL"
+      }
+     },
+     "open_question_options": []
+    }
+   ],
+   "department": "Sales",
+   "state_name": "Tokyo",
+   "location_question_visible": false,
+   "category_code": "security",
+   "sharing_title": "Account Executive Japan",
+   "hybrid": false,
+   "status": "published",
+   "min_hours_per_week": null,
+   "tags": [],
+   "max_hours": null
+  },
+  {
+   "country": "Australia",
+   "options_salutation": "off",
+   "position": 216,
+   "options_cover_letter": "off",
+   "careers_url": "https://aikidosecurity.recruitee.com/o/customer-success-engineer-auz",
+   "published_at": "2026-09-28 08:47:53 UTC",
+   "options_title": "off",
+   "education_code": "bachelor_degree",
+   "locations": [
+    {
+     "id": 249242,
+     "name": "Sydney",
+     "state": "New South Wales",
+     "country": "Australia",
+     "city": "Sydney",
+     "translations": {
+      "en": {
+       "name": "Sydney",
+       "city": "Sydney",
+       "postal_code": null,
+       "street": null,
+       "note": null
+      }
+     },
+     "country_code": "AU",
+     "state_code": "NSW",
+     "postal_code": null,
+     "street": null,
+     "note": null
+    }
+   ],
+   "min_hours": null,
+   "country_code": "AU",
+   "highlight": null,
+   "dynamic_fields": [],
+   "max_hours_per_week": null,
+   "locations_question_type": "multiple_choice",
+   "options_phone": "required",
+   "updated_at": "2026-09-28 08:47:53 UTC",
+   "created_at": "2026-09-28 08:25:53 UTC",
+   "cover_image": null,
+   "postal_code": null,
+   "title": "Customer Success Engineer AUZ",
+   "sharing_description": "As our first Customer Success Engineer in the Australia, you’ll be a crucial bridge between our customers and Aikido Security’s platform, driving adoption, and protecting against churn. ",
+   "location": "Remote job",
+   "locations_question": "What is your preferred work location?",
+   "locations_question_required": true,
+   "close_at": null,
+   "sharing_image": "https://recruitee-main.s3.eu-central-1.amazonaws.com/offers/2761031/normal_sharing_nu8pp8ytkg74.jpg",
+   "state_code": "NSW",
+   "company_name": "Aikido Security",
+   "city": "Sydney",
+   "slug": "customer-success-engineer-auz",
+   "translations": {
+    "en": {
+     "title": "Customer Success Engineer AUZ",
+     "highlight": null,
+     "sharing_image": "https://recruitee-main.s3.eu-central-1.amazonaws.com/offers/2761031/normal_sharing_nu8pp8ytkg74.jpg",
+     "sharing_title": "Customer Success Engineer AUZ",
+     "sharing_description": "As our first Customer Success Engineer in the Australia, you’ll be a crucial bridge between our customers and Aikido Security’s platform, driving adoption, and protecting against churn. ",
+     "locations_question": "What is your preferred work location?"
+    }
+   },
+   "on_site": false,
+   "mailbox_email": "job.upyy8@aikidosecurity.recruitee.com",
+   "options_photo": "off",
+   "careers_apply_url": "https://aikidosecurity.recruitee.com/o/customer-success-engineer-auz/c/new",
+   "experience_code": "mid_level",
+   "remote": true,
+   "options_cv": "required",
+   "salary": {
+    "max": null,
+    "min": null,
+    "period": null,
+    "currency": null
+   },
+   "employment_type_code": "fulltime_permanent",
+   "guid": "upyy8",
+   "id": 2761031,
+   "open_questions": [
+    {
+     "id": 4397861,
+     "position": 1,
+     "options": {},
+     "required": true,
+     "body": "Are you located in or close around Sydney or Melbourne ",
+     "kind": "boolean",
+     "translations": {
+      "en": {
+       "body": "Are you located in or close around Sydney or Melbourne "
+      }
+     },
+     "open_question_options": []
+    },
+    {
+     "id": 4397862,
+     "position": 2,
+     "options": {},
+     "required": true,
+     "body": "Do you already have experience in AppSec?",
+     "kind": "boolean",
+     "translations": {
+      "en": {
+       "body": "Do you already have experience in AppSec?"
+      }
+     },
+     "open_question_options": []
+    },
+    {
+     "id": 4397863,
+     "position": 3,
+     "options": {},
+     "required": true,
+     "body": "LinkedIn URL",
+     "kind": "string",
+     "translations": {
+      "en": {
+       "body": "LinkedIn URL"
+      }
+     },
+     "open_question_options": []
+    }
+   ],
+   "department": "Sales",
+   "state_name": "New South Wales",
+   "location_question_visible": false,
+   "category_code": "customer_service",
+   "sharing_title": "Customer Success Engineer AUZ",
+   "hybrid": false,
+   "status": "published",
+   "min_hours_per_week": null,
+   "tags": [],
+   "max_hours": null
+  },
+  {
+   "country": "Belgium",
+   "options_salutation": "off",
+   "position": 211,
+   "options_cover_letter": "optional",
+   "careers_url": "https://aikidosecurity.recruitee.com/o/site-reliability-engineer",
+   "published_at": "2026-09-26 07:00:23 UTC",
+   "options_title": "off",
+   "education_code": "professional",
+   "locations": [
+    {
+     "id": 291909,
+     "name": "Ghent",
+     "state": "Oost-Vlaanderen",
+     "country": "Belgium",
+     "city": "Ghent",
+     "translations": {
+      "en": {
+       "name": "Ghent",
+       "city": "Ghent",
+       "postal_code": null,
+       "street": null,
+       "note": null
+      }
+     },
+     "country_code": "BE",
+     "state_code": "VOV",
+     "postal_code": null,
+     "street": null,
+     "note": null
+    }
+   ],
+   "min_hours": null,
+   "country_code": "BE",
+   "highlight": null,
+   "dynamic_fields": [],
+   "max_hours_per_week": null,
+   "locations_question_type": "multiple_choice",
+   "options_phone": "required",
+   "updated_at": "2026-09-28 08:56:00 UTC",
+   "created_at": "2026-09-26 06:56:49 UTC",
+   "cover_image": null,
+   "postal_code": null,
+   "title": "Site Reliability Engineer",
+   "sharing_description": "🌍 We’re making security suck less for developers.Security tools haven’t kept up with how software is built today. They interrupt teams, slow releases, and turn security into a bottleneck instead of a ",
+   "location": "Ghent, Oost-Vlaanderen, Belgium",
+   "locations_question": "What is your preferred work location?",
+   "locations_question_required": true,
+   "close_at": null,
+   "sharing_image": null,
+   "state_code": "VOV",
+   "company_name": "Aikido Security",
+   "city": "Ghent",
+   "slug": "site-reliability-engineer",
+   "translations": {
+    "en": {
+     "title": "Site Reliability Engineer",
+     "highlight": null,
+     "sharing_image": null,
+     "sharing_title": "Site Reliability Engineer",
+     "sharing_description": "🌍 We’re making security suck less for developers.Security tools haven’t kept up with how software is built today. They interrupt teams, slow releases, and turn security into a bottleneck instead of a ",
+     "locations_question": "What is your preferred work location?"
+    }
+   },
+   "on_site": true,
+   "mailbox_email": "job.aomlt@aikidosecurity.recruitee.com",
+   "options_photo": "off",
+   "careers_apply_url": "https://aikidosecurity.recruitee.com/o/site-reliability-engineer/c/new",
+   "experience_code": "experienced",
+   "remote": false,
+   "options_cv": "required",
+   "salary": {
+    "max": null,
+    "min": null,
+    "period": null,
+    "currency": null
+   },
+   "employment_type_code": "fulltime_permanent",
+   "guid": "aomlt",
+   "id": 2760499,
+   "open_questions": [],
+   "department": "Engineering",
+   "state_name": "Oost-Vlaanderen",
+   "location_question_visible": false,
+   "category_code": "engineering",
+   "sharing_title": "Site Reliability Engineer",
+   "hybrid": false,
+   "status": "published",
+   "min_hours_per_week": null,
+   "tags": [],
+   "max_hours": null
+  }
+ ]
+}

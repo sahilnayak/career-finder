@@ -1,0 +1,54 @@
+[
+ {
+  "uuid": "3cfa4a96-d2cf-401e-a1b5-d4310eca1fd7",
+  "name": "Administrative Intern",
+  "department": {
+   "id": "People",
+   "label": "People"
+  },
+  "url": "https://ats.rippling.com/carbon-health/jobs/3cfa4a96-d2cf-401e-a1b5-d4310eca1fd7",
+  "workLocation": {
+   "label": "Bogotá, Colombia",
+   "id": "Bogotá, Colombia"
+  }
+ },
+ {
+  "uuid": "b34362b9-43df-45aa-bc0b-4d5807f61f65",
+  "name": "Area Medical Director (Physician Assistant / Nurse Practitioner)",
+  "department": {
+   "id": "Clinicians",
+   "label": "Clinicians"
+  },
+  "url": "https://ats.rippling.com/carbon-health/jobs/b34362b9-43df-45aa-bc0b-4d5807f61f65",
+  "workLocation": {
+   "label": "Wall Township, NJ",
+   "id": "Wall Township, NJ"
+  }
+ },
+ {
+  "uuid": "af968b46-b3f1-459e-bef2-b2321bf6a813",
+  "name": "Area Medical Director (Physician Assistant / Nurse Practitioner)",
+  "department": {
+   "id": "Clinicians",
+   "label": "Clinicians"
+  },
+  "url": "https://ats.rippling.com/carbon-health/jobs/af968b46-b3f1-459e-bef2-b2321bf6a813",
+  "workLocation": {
+   "label": "Oceanside, CA",
+   "id": "Oceanside, CA"
+  }
+ },
+ {
+  "uuid": "af968b46-b3f1-459e-bef2-b2321bf6a813",
+  "name": "Area Medical Director (Physician Assistant / Nurse Practitioner)",
+  "department": {
+   "id": "Clinicians",
+   "label": "Clinicians"
+  },
+  "url": "https://ats.rippling.com/carbon-health/jobs/af968b46-b3f1-459e-bef2-b2321bf6a813",
+  "workLocation": {
+   "label": "Los Angeles, CA",
+   "id": "Los Angeles, CA"
+  }
+ }
+]

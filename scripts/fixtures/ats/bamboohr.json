@@ -1,0 +1,67 @@
+{
+ "meta": {
+  "totalCount": 29
+ },
+ "result": [
+  {
+   "id": "1472",
+   "jobOpeningName": "Associate",
+   "departmentId": null,
+   "departmentLabel": null,
+   "employmentStatusLabel": "Full Time",
+   "employmentType": null,
+   "location": {
+    "city": "Tampere",
+    "state": "Finland"
+   },
+   "atsLocation": {
+    "country": null,
+    "state": null,
+    "province": null,
+    "city": null
+   },
+   "isRemote": null,
+   "locationType": "0"
+  },
+  {
+   "id": "1473",
+   "jobOpeningName": "Program Manager",
+   "departmentId": null,
+   "departmentLabel": null,
+   "employmentStatusLabel": "Full Time",
+   "employmentType": null,
+   "location": {
+    "city": "Tampere",
+    "state": "Finland"
+   },
+   "atsLocation": {
+    "country": null,
+    "state": null,
+    "province": null,
+    "city": null
+   },
+   "isRemote": null,
+   "locationType": "0"
+  },
+  {
+   "id": "1492",
+   "jobOpeningName": "Corporate Partnerships Associate ",
+   "departmentId": "18980",
+   "departmentLabel": "Smart Cities",
+   "employmentStatusLabel": "Full Time",
+   "employmentType": null,
+   "location": {
+    "city": "Valencia",
+    "state": "Spain"
+   },
+   "atsLocation": {
+    "country": null,
+    "state": null,
+    "province": null,
+    "city": null
+   },
+   "isRemote": null,
+   "locationType": "0"
+  }
+ ]
+}

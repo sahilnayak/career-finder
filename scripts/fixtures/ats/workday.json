@@ -1,0 +1,33 @@
+{
+ "total": 783,
+ "jobPostings": [
+  {
+   "title": "Sr. Director, Financial Analysis",
+   "externalPath": "/job/AE---Dubai-United-Arab-Emirates/Sr-Director--Financial-Analysis_REF088997W",
+   "locationsText": "AE - Dubai, United Arab Emirates",
+   "postedOn": "Posted Today",
+   "bulletFields": [
+    "REF088997W"
+   ]
+  },
+  {
+   "title": "Director, Client Relationship Management – Japan",
+   "externalPath": "/job/JP---Tokyo-Japan/Director--Client-Relationship-Management---Japan_REF076613W",
+   "locationsText": "JP - Tokyo, Japan",
+   "postedOn": "Posted Today",
+   "remoteType": "Hybrid",
+   "bulletFields": [
+    "REF076613W"
+   ]
+  },
+  {
+   "title": "Sr. Manager, Finance Operations (Accounts Payable)",
+   "externalPath": "/job/IN---Bengaluru-India/Sr-Manager--Finance-Operations--Accounts-Payable-_REF089035W",
+   "locationsText": "IN - Bengaluru, India",
+   "postedOn": "Posted Yesterday",
+   "bulletFields": [
+    "REF089035W"
+   ]
+  }
+ ]
+}
