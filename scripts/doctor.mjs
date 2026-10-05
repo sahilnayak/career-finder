@@ -5,7 +5,8 @@
  * Checks all prerequisites and prints a pass/fail checklist.
  */
 
-import { existsSync, mkdirSync, readdirSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, renameSync, rmdirSync } from 'fs';
+import { NARRATIVE_MD, LEGACY_NARRATIVE_MD } from './lib/paths.mjs';
 import { spawnSync } from 'child_process';
 import { homedir } from 'os';
 import { join, dirname } from 'path';
@@ -151,11 +152,26 @@ function checkAutoDir(name) {
   }
 }
 
+// The narrative moved from LEGACY_NARRATIVE_MD to NARRATIVE_MD (see lib/paths.mjs).
+// Migrate once, never overwrite, and remove the old top-level folder only when it is empty.
 function checkModesProfile() {
-  if (existsSync(join(projectRoot, 'modes', '_profile.md'))) {
-    return { pass: true, label: 'modes/_profile.md found', onboarding: true };
+  const cur = join(projectRoot, NARRATIVE_MD), legacy = join(projectRoot, LEGACY_NARRATIVE_MD);
+  if (existsSync(legacy) && !existsSync(cur)) {
+    try {
+      renameSync(legacy, cur);
+      console.log(`  ↪ Migrated ${LEGACY_NARRATIVE_MD} → ${NARRATIVE_MD}`);
+    } catch (e) {
+      return { pass: false, onboarding: true, label: `could not migrate ${LEGACY_NARRATIVE_MD}`, fix: `Run: mv ${LEGACY_NARRATIVE_MD} ${NARRATIVE_MD}` };
+    }
+  } else if (existsSync(legacy) && existsSync(cur)) {
+    console.log(`  ⚠️  Both ${LEGACY_NARRATIVE_MD} and ${NARRATIVE_MD} exist; using ${NARRATIVE_MD}. Merge and delete the old one by hand.`);
   }
-  return { pass: false, onboarding: true, label: 'modes/_profile.md not found', fix: 'Created by onboarding (archetypes, narrative, scoring weights)' };
+  const oldDir = join(projectRoot, 'modes');
+  try { if (existsSync(oldDir) && readdirSync(oldDir).length === 0) rmdirSync(oldDir); } catch { /* leave it */ }
+  if (existsSync(cur)) {
+    return { pass: true, label: `${NARRATIVE_MD} found`, onboarding: true };
+  }
+  return { pass: false, onboarding: true, label: `${NARRATIVE_MD} not found`, fix: 'Created by onboarding (archetypes, narrative, scoring weights)' };
 }
 
 async function checkTargets() {

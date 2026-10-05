@@ -3,7 +3,7 @@
 <!-- ============================================================
      THIS FILE IS AUTO-UPDATABLE. Don't put personal data here.
      
-     Your customizations go in modes/_profile.md (never auto-updated).
+     Your customizations go in config/narrative.md (never auto-updated).
      This file contains system rules, scoring logic, and tool config
      that improve with each career-finder release.
      ============================================================ -->
@@ -15,11 +15,11 @@
 | cv.md | `cv.md` (project root) | ALWAYS |
 | article-digest.md | `article-digest.md` (if exists) | ALWAYS (detailed proof points) |
 | profile.yml | `config/profile.yml` | ALWAYS (candidate identity and targets) |
-| _profile.md | `modes/_profile.md` | ALWAYS (user archetypes, narrative, negotiation) |
+| config/narrative.md | ALWAYS (user archetypes, narrative, negotiation) |
 
 **RULE: NEVER hardcode metrics from proof points.** Read them from cv.md + article-digest.md at evaluation time.
 **RULE: For article/project metrics, article-digest.md takes precedence over cv.md.**
-**RULE: Read _profile.md AFTER this file. User customizations in _profile.md override defaults here.**
+**RULE: Read config/narrative.md AFTER this file. User customizations in config/narrative.md override defaults here.**
 
 ---
 
@@ -30,7 +30,7 @@ The evaluation uses 6 blocks (A-F) with a global score of 1-5:
 | Dimension | What it measures |
 |-----------|-----------------|
 | CV match | Skills, experience, proof points alignment |
-| North Star alignment | How well the role fits the user's target archetypes (from _profile.md) |
+| North Star alignment | How well the role fits the user's target archetypes (from config/narrative.md) |
 | Comp | Salary vs market (5=top quartile, 1=well below) |
 | Cultural signals | Company culture, growth, stability, remote policy |
 | Red flags | Blockers, warnings (negative adjustments) |
@@ -72,12 +72,12 @@ Block G assesses whether a posting is likely a real, active opening. It does NOT
 
 ## Archetype Detection
 
-Archetypes are user data. Read the archetype table in `modes/_profile.md` (filled by onboarding from
+Archetypes are user data. Read the archetype table in `config/narrative.md` (filled by onboarding from
 the candidate's resume) and classify every offer into one of those archetypes (or a hybrid of 2),
 matching JD signals against each archetype's "Thematic axes". If the JD fits none of them, say so --
 that is itself a fit signal. Never fall back to a built-in list of archetypes.
 
-After detecting archetype, read `modes/_profile.md` for the user's specific framing and proof points for that archetype.
+After detecting archetype, read `config/narrative.md` for the user's specific framing and proof points for that archetype.
 
 ## Global Rules
 
@@ -95,9 +95,9 @@ After detecting archetype, read `modes/_profile.md` for the user's specific fram
 ### ALWAYS
 
 0. **Cover letter:** If the form allows it, ALWAYS include one. Same visual design as CV. JD quotes mapped to proof points. 1 page max.
-1. Read cv.md, _profile.md, and article-digest.md (if exists) before evaluating
+1. Read cv.md, config/narrative.md, and article-digest.md (if exists) before evaluating
 1b. **First evaluation of each session:** Run `node scripts/cv-sync-check.mjs`. If warnings, notify user.
-2. Detect the role archetype and adapt framing per _profile.md
+2. Detect the role archetype and adapt framing per config/narrative.md
 3. Cite exact lines from CV when matching
 4. Use WebSearch for comp and company data
 5. Register in tracker after evaluating
@@ -115,7 +115,7 @@ After detecting archetype, read `modes/_profile.md` for the user's specific fram
 | WebSearch | Comp research, trends, company culture, LinkedIn contacts, fallback for JDs |
 | WebFetch | Fallback for extracting JDs from static pages |
 | Chrome DevTools MCP | Verify offers / scrape JDs (`mcp__chrome-devtools__new_page` or `navigate_page` → `mcp__chrome-devtools__take_snapshot`; `mcp__chrome-devtools__evaluate_script` to inspect DOM/XHR). See the `browser-automation` skill for the full runbook (debug Chrome on port 9222, profile `~/.career-finder-chrome-debug`). **NEVER 2+ agents driving the debug Chrome in parallel.** |
-| Read | cv.md, _profile.md, article-digest.md, cv-template.html |
+| Read | cv.md, config/narrative.md, article-digest.md, cv-template.html |
 | Write | Temporary HTML for PDF, applications.md, reports .md |
 | Edit | Update tracker |
 | Canva MCP | Optional visual CV generation. Duplicate base design, edit text, export PDF. Requires `canva_resume_design_id` in profile.yml. |

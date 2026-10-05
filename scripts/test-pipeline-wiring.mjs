@@ -4,7 +4,7 @@
  * test-pipeline-wiring.mjs — static guard on how morning.mjs wires lanes to modes (item #27).
  *
  * OFFLINE and read-only: it parses scripts/morning.mjs, the router table in
- * .claude/skills/career-finder/SKILL.md and modes/*.md as text. It never runs a lane,
+ * .claude/skills/career-finder/SKILL.md and its bundled MODES_DIR/*.md as text. It never runs a lane,
  * never calls claude, never touches data/.
  *
  *   (a) every claude -p prompt names its mode file (and that file exists)
@@ -13,7 +13,7 @@
  *   (d) no claude call on an empty cycle: candidate-driven LLM lanes are count-gated
  *   (e) build-se-watchlist is absent
  *   (f) schedule.mjs --print: no /Users/YOU, only com.career-finder labels (skipped if absent)
- *   (g) every modes/*.md is in the router Automation column with a lane or "interactive-only"
+ *   (g) every MODES_DIR/*.md is in the router Automation column with a lane or "interactive-only"
  *
  *   node scripts/test-pipeline-wiring.mjs
  */
@@ -22,6 +22,7 @@ import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
+import { MODES_DIR } from './lib/paths.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 let passed = 0, failed = 0, warnings = 0;
@@ -61,21 +62,23 @@ const CALLS = [...SRC.matchAll(/\bclaude\((['`])([^'`]+)\1,\s*/g)].map(m => {
 // ── (a) prompts name their mode file ───────────────────────────────────
 console.log('\n(a) every claude -p prompt names its mode file');
 check(CALLS.length >= 8, `found ${CALLS.length} claude() call sites`);
-const FOLLOW = (SRC.match(/const FOLLOW_OFFER = '([^']+)'/) || [])[1] || '';
+const FOLLOW = (SRC.match(/const FOLLOW_OFFER = [`']([^`']+)[`']/) || [])[1] || '';
+const expand = s => s.replaceAll('${MODES_DIR}', MODES_DIR);
+check(!/(^|[^\w./-])modes\//m.test(SRC.replaceAll(MODES_DIR, '')), `morning.mjs names mode files only via MODES_DIR (${MODES_DIR})`);
 for (const c of CALLS) {
-  const head = c.head.replace('${FOLLOW_OFFER}', FOLLOW).replace(/\$\{headless\('([^']+)'\)\}/g, 'modes/$1.md');
-  const files = [...head.matchAll(/modes\/([\w-]+)\.md/g)].map(m => m[1]);
-  if (!files.length) { fail(`${c.name} (morning.mjs:${c.line}) prompt opens without naming a modes/*.md file`); continue; }
-  const missing = files.filter(f => !existsSync(join(ROOT, 'modes', `${f}.md`)));
-  check(!missing.length, `${c.name} -> modes/${files[0]}.md`, missing.length ? `missing ${missing.join(', ')}` : '');
+  const head = expand(c.head.replace('${FOLLOW_OFFER}', FOLLOW).replace(/\$\{headless\('([^']+)'\)\}/g, `${MODES_DIR}/$1.md`));
+  const files = [...head.matchAll(/\.claude\/skills\/career-finder\/modes\/([\w-]+)\.md/g)].map(m => m[1]);
+  if (!files.length) { fail(`${c.name} (morning.mjs:${c.line}) prompt opens without naming a ${MODES_DIR}/*.md file`); continue; }
+  const missing = files.filter(f => !existsSync(join(ROOT, MODES_DIR, `${f}.md`)));
+  check(!missing.length, `${c.name} -> ${files[0]}.md exists on disk`, missing.length ? `missing ${missing.join(', ')}` : '');
 }
 for (const mode of [...new Set([...SRC.matchAll(/headless\('([\w-]+)'\)/g)].map(m => m[1]))]) {
-  const md = existsSync(join(ROOT, 'modes', `${mode}.md`)) ? readFileSync(join(ROOT, 'modes', `${mode}.md`), 'utf8') : '';
-  check(/^## Headless\b/m.test(md), `modes/${mode}.md has the "## Headless" section the prompt loads`);
+  const md = existsSync(join(ROOT, MODES_DIR, `${mode}.md`)) ? readFileSync(join(ROOT, MODES_DIR, `${mode}.md`), 'utf8') : '';
+  check(/^## Headless\b/m.test(md), `${mode}.md has the "## Headless" section the prompt loads`);
 }
-if (/modes\/feedback\.md/.test(SRC)) {
-  const fb = readFileSync(join(ROOT, 'modes/feedback.md'), 'utf8');
-  check(/^## Outcomes \(headless\)/m.test(fb), 'modes/feedback.md has "## Outcomes (headless)"');
+if (/feedback\.md/.test(SRC)) {
+  const fb = readFileSync(join(ROOT, MODES_DIR, 'feedback.md'), 'utf8');
+  check(/^## Outcomes \(headless\)/m.test(fb), 'feedback.md has "## Outcomes (headless)"');
 }
 check(!/auto-pipeline\.md/.test(CALLS.find(c => c.name === 'reports')?.head || ''), 'reports prompt names offer.md, not auto-pipeline.md');
 
@@ -157,9 +160,9 @@ check(HOT.indexOf("rowsIn('data/hot-companies.tsv') === 0") < HOT.indexOf("claud
 // ── (e) build-se-watchlist absent ──────────────────────────────────────
 console.log('\n(e) build-se-watchlist absent');
 check(!existsSync(join(ROOT, 'scripts/build-se-watchlist.mjs')), 'scripts/build-se-watchlist.mjs does not exist');
-const g = spawnSync('git', ['grep', '-l', 'build-se-watchlist', '--', 'scripts', 'modes', '.claude', 'package.json'], { cwd: ROOT, encoding: 'utf8' });
+const g = spawnSync('git', ['grep', '-l', 'build-se-watchlist', '--', 'scripts', '.claude', 'package.json'], { cwd: ROOT, encoding: 'utf8' });
 const refs = (g.stdout || '').split('\n').filter(f => f && !/test-pipeline-wiring\.mjs$/.test(f));
-check(!refs.length, 'no reference to build-se-watchlist in scripts/modes/.claude/package.json', refs.join(', '));
+check(!refs.length, 'no reference to build-se-watchlist in scripts/.claude/package.json', refs.join(', '));
 check(!/se-watchlist/.test(SRC), 'morning.mjs has no se-watchlist logic');
 
 // ── (f) scheduler --print ──────────────────────────────────────────────
@@ -187,11 +190,11 @@ for (const l of SKILL.split('\n')) {
   if (cells.length < 5) continue;
   for (const m of cells[2].matchAll(/`([\w-]+)`/g)) rows.set(m[1], cells[3]);
 }
-for (const f of readdirSync(join(ROOT, 'modes')).filter(f => f.endsWith('.md') && !f.startsWith('_'))) {
+for (const f of readdirSync(join(ROOT, MODES_DIR)).filter(f => f.endsWith('.md') && !f.startsWith('_'))) {
   const mode = f.replace(/\.md$/, '');
   const auto = rows.get(mode);
-  if (auto === undefined) { fail(`modes/${f}: no router row`); continue; }
-  check(/interactive-only/.test(auto) || /`[^`]+`|mode \(opt-in|rubric/.test(auto), `modes/${f}: ${auto.slice(0, 70)}`);
+  if (auto === undefined) { fail(`${f}: no router row`); continue; }
+  check(/interactive-only/.test(auto) || /`[^`]+`|mode \(opt-in|rubric/.test(auto), `${f}: ${auto.slice(0, 70)}`);
 }
 
 console.log(`\n📊 ${passed} passed, ${failed} failed, ${warnings} warnings`);

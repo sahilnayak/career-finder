@@ -532,7 +532,7 @@ if (!args['skip-visits']) {
   // Root cause of the flag: 3 back-to-back roster scans visited ~246 profiles in ~1h.
   // Defenses: (1) keep only the most-relevant profiles, (2) hard per-run cap, (3) a
   // per-DAY budget shared across runs so bursts can't accumulate. Prefer the targeted
-  // LinkedIn search (modes/outreach.md) over scanning a whole roster on big companies.
+  // LinkedIn search (.claude/skills/career-finder/modes/outreach.md) over scanning a whole roster on big companies.
   //
   // The daily budget lives in the shared linkedin-stealth counter (li-budget.mjs
   // → pace.mjs), NOT a private file. Before 2026-07-25 this script kept its own
@@ -596,7 +596,7 @@ if (!args['skip-visits']) {
   // strong automation signal. Allow at most 2 via --concurrency, never the old 3-6.
   // Hard 1, no override. Overlapping in-flight profile loads from one member id is
   // a clean automation tell, and --concurrency 2 bought ~3 minutes on a run that is
-  // now 2 visits long anyway. (modes/_profile.md told agents to pass 3; fixed.)
+  // now 2 visits long anyway. (config/narrative.md told agents to pass 3; fixed.)
   const LANES = 1;
   let qi = 0, done = 0;
   const saveLock = { busy: false };

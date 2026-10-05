@@ -8,14 +8,15 @@
  *
  * Logs every speed cycle to data/speed-log.tsv. --analyze learns WHICH HOURS (local TZ)
  * actually produce fresh ≥4.3 posts, and after enough cycles banks a learning to
- * modes/scan-web.md so the loop can prioritize those windows (tighter cadence when
+ * data/scan-web-learnings.md so the loop can prioritize those windows (tighter cadence when
  * roles post, idle when they don't) — getting more efficient over time.
  */
 
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'fs';
+import { ensureLearnings } from './lib/paths.mjs';
 import { TZ } from './scan-core.mjs';
 
-const LOG = 'data/speed-log.tsv', LEARN = 'modes/scan-web.md';
+const LOG = 'data/speed-log.tsv', LEARN = ensureLearnings();
 const HEADER = 'ts\thour_pt\tats_found\tbrowser_found\tscored\tqualified\tnote';
 const argv = process.argv.slice(2);
 
@@ -34,7 +35,7 @@ if (argv.includes('--analyze')) {
     if (!md.includes(`${today} (speed)`)) {
       const line = `- ${today} (speed): across ${cycles} speed cycles, fresh ≥4.3 posts cluster at hours ${hot} (${TZ}). Prioritize the browser supplement + tighter cadence in those windows; idle elsewhere to save cost.`;
       const m = 'newest first)\n'; const i = md.indexOf(m);
-      if (i !== -1) { writeFileSync(LEARN, md.slice(0, i + m.length) + line + '\n' + md.slice(i + m.length)); console.log('Banked speed timing learning → modes/scan-web.md.'); }
+      if (i !== -1) { writeFileSync(LEARN, md.slice(0, i + m.length) + line + '\n' + md.slice(i + m.length)); console.log(`Banked speed timing learning → ${LEARN}.`); }
     }
   }
   process.exit(0);

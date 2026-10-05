@@ -14,7 +14,7 @@
 
 **What the pipeline is for.** Continuously surface the freshest in-territory roles that genuinely fit the candidate, and — the moment one qualifies — produce the full application kit (evaluation report, tailored résumé, outreach drafts) so the only human step left is *review and send*.
 
-**Who it targets:** whatever `targets.roles` in `config/profile.yml` says -- set during onboarding from the candidate's resume and confirmed by them. Archetypes and framing live in `modes/_profile.md`. Nothing in the pipeline assumes a career.
+**Who it targets:** whatever `targets.roles` in `config/profile.yml` says -- set during onboarding from the candidate's resume and confirmed by them. Archetypes and framing live in `config/narrative.md`. Nothing in the pipeline assumes a career.
 
 **What it optimizes:**
 - **Time-to-lead within `pipeline.window_hours`** — a fresh role is found, scored and kitted within a day of posting.
@@ -145,7 +145,7 @@ Thin supply for a narrow role is normal. A short day is reported, never inflated
 
 ### Stage 2 — LLM scoring (A–G rubric, ≥ qualify_score bar)
 - **Purpose:** score every fresh candidate against the candidate's CV + targeting, write the canonical ledger, and flag qualifiers.
-- **Runs it:** `morning.mjs` `score` lane, `claude -p` on `pipeline.scoring_model` (Sonnet), capped at `pipeline.score_cap` per run. Helper: `scripts/record-scored.mjs`. Rubric: `modes/offer.md` + `modes/_shared.md` vs `cv.md` + `modes/_profile.md`.
+- **Runs it:** `morning.mjs` `score` lane, `claude -p` on `pipeline.scoring_model` (Sonnet), capped at `pipeline.score_cap` per run. Helper: `scripts/record-scored.mjs`. Rubric: `.claude/skills/career-finder/modes/offer.md` + `.claude/skills/career-finder/modes/_shared.md` vs `cv.md` + `config/narrative.md`.
 - **Guard:** only runs if there are new signals (ATS+LinkedIn+web > 0) → empty cycles cost zero tokens.
 - **Inputs:** `data/_candidates.tsv`, `data/_speed-li.json`, `data/_web-roles.tsv`; dedup vs `scored-jobs.tsv`; rubric files.
 - **Outputs:** appends every triaged candidate → **`data/scored-jobs.tsv`** (the canonical ledger); ≥ qualify_score → `data/qualifiers.tsv`; logs the cycle via `scripts/speed-metrics.mjs`.
@@ -198,7 +198,7 @@ manufacture the number.**
 ### Stage 5 — Outreach drain
 - **Purpose:** turn each **picked** owed qualifier into JD-anchored, contact-resolved, QA'd outreach drafts. **Draft-only — never sends.** Gated by stage 4b: the drain processes only what the user selected.
 - **Runs it:** `scripts/drain-outreach.mjs` orchestrates, per owed job: `gen-bullets.mjs` → resolve LinkedIn slug → `scan-roster.mjs` → `find-email.mjs` → `gen-outreach.mjs` → `render-outreach.mjs` → `outreach-judge.mjs`. Modes: `outreach.md`, `contact.md`.
-- **Inputs:** `outreach-owed --json`; `cv.md` + `_profile.md`; the JD; roster cache `data/rosters/*.json`; report `reports/NNN-*.md` (Block F STAR points).
+- **Inputs:** `outreach-owed --json`; `cv.md` + `config/narrative.md`; the JD; roster cache `data/rosters/*.json`; report `reports/NNN-*.md` (Block F STAR points).
 - **Outputs:** `data/bullets/{slug}.json`, `data/rosters/{slug}.json`, `output/outreach/*.html` + `*.drafts.json` + `*.scorecard.json`, and **`data/outreach-log.tsv`** rows (`pending`/`pending`).
 - **Rules:**
   - **Spend profile visits on every draft contact.** A visit's value is
@@ -209,7 +209,7 @@ manufacture the number.**
     finalists **before** raw card rank, with `--max-visits` defaulting
     to **6** to cover the full persona set. Fewer companies per day is the accepted trade.
   - **JD-mapped gold/silver/bronze** (`gen-bullets.mjs`): identify the 3 most important JD requirements in priority order; bullet 0 = req #1; each bullet ≤28 words, grounded in real `cv.md` or a defensible inference — **invent no fake metrics/employers/tools.** Strips em dashes. `li` ≤140 chars, `liLeader` ≤95.
-  - **JD-tie style = SUBTLE ECHO, no announcer:** each bullet **weaves the JD's own verb/phrase** naturally (not a `Requirement: proof` label); the email opens with an **employer-specific JD-mission line** (name the company + its distinctive vertical/motion) and goes **straight into the bullets** — the `and here are three reasons I'd be a good fit:` announcer is **dropped**. Anchored to the JD's product/mission/work and what was BUILT, never the recipient's role. Enforced in `gen-bullets.mjs` (prompt) + `gen-outreach.mjs` (no-announcer template); rule lives in `modes/outreach.md`.
+  - **JD-tie style = SUBTLE ECHO, no announcer:** each bullet **weaves the JD's own verb/phrase** naturally (not a `Requirement: proof` label); the email opens with an **employer-specific JD-mission line** (name the company + its distinctive vertical/motion) and goes **straight into the bullets** — the `and here are three reasons I'd be a good fit:` announcer is **dropped**. Anchored to the JD's product/mission/work and what was BUILT, never the recipient's role. Enforced in `gen-bullets.mjs` (prompt) + `gen-outreach.mjs` (no-announcer template); rule lives in `.claude/skills/career-finder/modes/outreach.md`.
   - **Contact discovery — match the method to company size:** small co → roster + persona-search; **large/multi-team → targeted LinkedIn `"{Company} {Team} {Role}"` search, NOT the roster**; Head of {Team} = gold HM; verify every contact is on the hiring team.
   - **`scan-roster.mjs` rules:** hard-stops on the **LinkedIn kill-switch** (`data/LINKEDIN_OFF`) **and on `data/LI_COOLDOWN`**; excludes CxO/founder (`EXCLUDE_RE`, now incl. CRO/CPO/CIO/CISO/president); **Leader = VP/Head/Director of the engineering or GTM org the req sits in**, never CEO; authority contacts must name a current employer or are flagged out of auto-pick; **sequential, 1 lane, no `--concurrency` flag**, 6–12s spacing.
     - **Ranking is `roster-score.mjs`, which parses (level, function) as TWO axes.** The old flat score conflated them and could tag a "Head of {Team}" as a **Peer** — peers are dropped from drafts — so the real hiring manager was found and discarded while the run reported full coverage. Past-employer clauses (`ex: …`) are stripped before the level parse; employer match is word-boundary equality, not substring.
@@ -238,7 +238,7 @@ manufacture the number.**
 - **Purpose:** learn from real-world responses so scoring and targeting improve.
 - **Runs it:** `morning.mjs` daily `outcomes` lane (once/day, only when there are in-flight applications; `claude -p`, **read-only Gmail**, mode `feedback.md` → Outcomes (headless)) → `scripts/record-outcome.mjs` → `scripts/feedback-outcomes.mjs --learn`. Downstream: `patterns.md`/`analyze-patterns.mjs`, `followup.md`/`followup-cadence.mjs`.
 - **Inputs:** `scripts/applied-watchlist.mjs` (in-flight applied jobs), Gmail (MCP), `qualifiers.tsv`, `applications.md`.
-- **Outputs:** edits the Status cell of existing `applications.md` rows (appends a dated `(auto-detected from Gmail)` note); `data/qualifier-outcomes.tsv`; and `--learn` prepends a dated, data-driven learning to **`modes/scan-web.md`** (which the scorer reads).
+- **Outputs:** edits the Status cell of existing `applications.md` rows (appends a dated `(auto-detected from Gmail)` note); `data/qualifier-outcomes.tsv`; and `--learn` prepends a dated, data-driven learning to **`.claude/skills/career-finder/modes/scan-web.md`** (which the scorer reads).
 - **Rules:** **READ-ONLY Gmail** — never send/reply/draft/delete/archive/label/modify; classify rejected/interview/offer/responded/NONE; an auto-acknowledgement is **not** "responded"; never regress a status. `--learn` fires once ≥5 decided outcomes exist (e.g. "FDE 67% vs SA 0% → prioritize FDE"). `followup` bans "just checking in"/"circling back"; cadence Applied 7d (max 2 then cold), Responded/Interview 1d.
 
 ---
@@ -279,13 +279,13 @@ manufacture the number.**
 | **Sweep window** | rolling **48h** | `scan-core.mjs` `makeHoursPredicate`, `morning.mjs` `ats:index` |
 | **Daily qualifier quota** | **`daily_quota` qualifiers AND `primary_quota` primary-role** — both gate the exit code | `daily-quota.mjs` (reads `pipeline.*`) |
 | **Qualifiers per run** | **loop until the quota, capped rounds; may end short, never inflate** (§4a) | `morning.mjs` keep-search caps |
-| **Territory** | `location` + `remote_policy` | `scan-core.mjs` location/title filters, `role-filters.mjs`, `_profile.md` |
+| **Territory** | `location` + `remote_policy` | `scan-core.mjs` location/title filters, `role-filters.mjs`, `config/narrative.md` |
 | **Browser concurrency** | **1, not configurable** (no `--concurrency` flag) | `scan-roster.mjs`; debug Chrome :9222 |
 | **Roster volume** | **2 profile visits/run, 12/day** | `scan-roster.mjs` + `li-budget.mjs` (shared counter) |
 | **Email confidence** | accept ≥ 80, cap 88 | `find-email.mjs` |
 | **LinkedIn ≤ 300 chars + exact CTA** | hard cap | `gen-outreach.mjs`, `outreach-judge.mjs` |
 | **Truth gate** | every $/% claim must appear in `cv.md` | `outreach-judge.mjs`, résumé `assertCvContract()` |
-| **Base-salary band** | NOT a scoring factor | `_profile.md` |
+| **Base-salary band** | NOT a scoring factor | `config/narrative.md` |
 | **Outreach selection** | user must pick; ≥ qualify_score = eligible, not owed | `outreach-queue.tsv` gate in `outreach-owed.mjs`; dashboard `w` |
 | **LinkedIn depth** | **< 60 employees → one-page roster; ≥ 60 → targeted search** (auto-mode is the DEFAULT) | `scan-roster.mjs` (`--no-auto-mode` to force a sweep, `--large-threshold`) |
 | **Profile visits / company** | **6** — every contact reaching a draft is visited, finalists queued first | `scan-roster.mjs` `PER_RUN_CAP` + provisional-finalist sort |
@@ -299,7 +299,7 @@ manufacture the number.**
 
 How the pipeline checks its own output. **Two tiers, by design:** deterministic gates and the auto Sonnet per-stage verifier **run automatically every cycle**; the heavyweight 6-agent review team is **opt-in** (manual trigger). Cost is minimized by spending LLM tokens only where judgment is genuinely needed — deterministic gates do the mechanical work for free, Sonnet does the semantic judgment, Opus is reserved for the opt-in team.
 
-**Model policy** (`modes/_profile.md`, 2026-06-28): verification/judging agents use **Sonnet** by default (~40% cheaper than Opus, reliable enough to judge); **never Opus for routine verification**; Haiku opt-in for mechanical checks only; never Fable (pricier than Opus). This intentionally overrides the global "always Opus" preference **for verification agents only**.
+**Model policy** (`config/narrative.md`, 2026-06-28): verification/judging agents use **Sonnet** by default (~40% cheaper than Opus, reliable enough to judge); **never Opus for routine verification**; Haiku opt-in for mechanical checks only; never Fable (pricier than Opus). This intentionally overrides the global "always Opus" preference **for verification agents only**.
 
 | Stage | Verifier | Type | Model | Judges | Run |
 |---|---|---|---|---|---|
@@ -324,7 +324,7 @@ How the pipeline checks its own output. **Two tiers, by design:** deterministic 
 
 ## 8. Learnings
 
-Learnings are banked per user: search-targeting learnings in `modes/scan-web.md` §Learnings, scoring and narrative overrides in `modes/_profile.md`. A new install starts with none.
+Learnings are banked per user: search-targeting learnings in `data/scan-web-learnings.md`, scoring and narrative overrides in `config/narrative.md`. A new install starts with none.
 
 ## 10. Cross-references
 
@@ -334,6 +334,6 @@ Learnings are banked per user: search-targeting learnings in `modes/scan-web.md`
 - **Customization (profile, archetypes, templates):** [`docs/CUSTOMIZATION.md`](CUSTOMIZATION.md)
 - **User vs system file layers:** [`DATA_CONTRACT.md`](../DATA_CONTRACT.md)
 - **Canonical states:** `templates/states.yml`
-- **The two learning streams:** `data/web-search-learnings.md` (search) · the dated learnings prepended to `modes/scan-web.md` (outcomes)
+- **The two learning streams:** `data/web-search-learnings.md` (search) · the dated learnings prepended to `data/scan-web-learnings.md` (outcomes)
 
 *This spec reflects the system as built and verified on 2026-06-28. When a stage's behavior changes, update the relevant stage block here and the matching mode/script — this file is the funnel's source of truth.*

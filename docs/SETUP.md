@@ -25,7 +25,7 @@ cp config/profile.example.yml config/profile.yml
 
 Easier: open Claude Code in the folder, paste or attach your resume, and say "set me up". The onboarding
 skill reads the resume, proposes target roles and location for you to confirm, and writes
-`config/profile.yml`, `modes/_profile.md`, `cv.md` and `portals.yml`. Check the result with
+`config/profile.yml`, `config/narrative.md`, `cv.md` and `portals.yml`. Check the result with
 `node scripts/targets.mjs`.
 
 ### 3. Add your CV

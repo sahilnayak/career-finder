@@ -19,14 +19,14 @@ If the input is a **URL** (not pasted JD text), follow this strategy to extract 
 **If the input is JD text** (not a URL): use it directly, no fetch needed.
 
 ## Step 1 — A-G evaluation
-Run exactly the same as the `offer` mode (read `modes/offer.md` for all blocks A-F + Block G Posting Legitimacy).
+Run exactly the same as the `offer` mode (read `.claude/skills/career-finder/modes/offer.md` for all blocks A-F + Block G Posting Legitimacy).
 
 ## Step 2 — Save .md report
-Save the full evaluation to `reports/{###}-{company-slug}-{YYYY-MM-DD}.md` (see format in `modes/offer.md`).
+Save the full evaluation to `reports/{###}-{company-slug}-{YYYY-MM-DD}.md` (see format in `.claude/skills/career-finder/modes/offer.md`).
 Include Block G in the saved report. Add `**Legitimacy:** {tier}` to the report header.
 
 ## Step 3 — Generate PDF
-Run the full `pdf` pipeline (read `modes/pdf.md`).
+Run the full `pdf` pipeline (read `.claude/skills/career-finder/modes/pdf.md`).
 
 ## Step 4 — Draft Application Answers (only if score >= 4.5)
 

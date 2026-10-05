@@ -18,6 +18,7 @@ import { execSync, execFileSync } from 'child_process';
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { MODES_DIR, modeFile, SHARED_MD, PROFILE_TEMPLATE, NARRATIVE_MD, LEGACY_NARRATIVE_MD, SCAN_WEB_LEARNINGS } from './lib/paths.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = dirname(__dirname);
@@ -49,9 +50,9 @@ function readFile(path) { return readFileSync(join(ROOT, path), 'utf-8'); }
 // Child processes inherit this: every script resolves targets from the fixture, not the user's config.
 const FIXTURE_PROFILE = join(SCRIPTS_DIR, 'fixtures', 'profile.test.yml');
 process.env.CAREER_FINDER_PROFILE ||= FIXTURE_PROFILE;
-
 // Nothing a test run spawns may write the user's request ledger (mocked traffic is not traffic).
 process.env.CAREER_FINDER_LEDGER_OFF = '1';
+
 console.log('\n🧪 career-finder test suite\n');
 
 // ── 1. SYNTAX CHECKS ────────────────────────────────────────────
@@ -176,8 +177,8 @@ console.log('\n5. Data contract validation');
 // Check system files exist
 const systemFiles = [
   'CLAUDE.md', 'VERSION', 'DATA_CONTRACT.md',
-  'modes/_shared.md', 'modes/_profile.template.md',
-  'modes/offer.md', 'modes/pdf.md', 'modes/scan.md',
+  SHARED_MD, PROFILE_TEMPLATE,
+  modeFile('offer'), modeFile('pdf'), modeFile('scan'),
   'templates/states.yml', 'templates/cv-template.html',
   '.claude/skills/career-finder/SKILL.md', '.claude/skills/career-finder-onboarding/SKILL.md',
 ];
@@ -192,7 +193,7 @@ for (const f of systemFiles) {
 
 // Check user files are NOT tracked (gitignored)
 const userFiles = [
-  'config/profile.yml', 'modes/_profile.md', 'portals.yml',
+  'config/profile.yml', NARRATIVE_MD, LEGACY_NARRATIVE_MD, SCAN_WEB_LEARNINGS, 'portals.yml',
 ];
 for (const f of userFiles) {
   const tracked = run('git', ['ls-files', f]);
@@ -263,7 +264,7 @@ if (!leakFound) {
 
 console.log('\n6b. Fork hygiene (no previous-owner or hard-coded target leftovers)');
 {
-  const SYSTEM_DIRS = ['scripts', 'modes', 'templates', 'dashboard', 'batch', 'docs', '.claude', '.opencode', 'config'];
+  const SYSTEM_DIRS = ['scripts', MODES_DIR, 'templates', 'dashboard', 'batch', 'docs', '.claude', '.opencode', 'config'];
   const SYSTEM_FILES = ['CLAUDE.md', 'AGENTS.md', 'DATA_CONTRACT.md', 'package.json'];
   const FORBIDDEN = 'sahil|nayak|productboard|versa networks|buzzhero|saratoga|95070|resolve ai';
   const targets = [...SYSTEM_DIRS.filter((d) => fileExists(d)), ...SYSTEM_FILES.filter((f) => fileExists(f))];
@@ -310,7 +311,7 @@ const expectedModes = [
 ];
 
 for (const mode of expectedModes) {
-  if (fileExists(`modes/${mode}`)) {
+  if (fileExists(`${MODES_DIR}/${mode}`)) {
     pass(`Mode exists: ${mode}`);
   } else {
     fail(`Missing mode: ${mode}`);
@@ -318,11 +319,25 @@ for (const mode of expectedModes) {
 }
 
 // Check _shared.md references _profile.md
-const shared = readFile('modes/_shared.md');
-if (shared.includes('_profile.md')) {
-  pass('_shared.md references _profile.md');
+const shared = readFile(SHARED_MD);
+if (shared.includes(NARRATIVE_MD)) {
+  pass(`_shared.md references ${NARRATIVE_MD}`);
 } else {
-  fail('_shared.md does NOT reference _profile.md');
+  fail(`_shared.md does NOT reference ${NARRATIVE_MD}`);
+}
+
+// The mode files live inside the career-finder skill; a top-level modes/ must not come back,
+// and no script may hard-code a top-level modes/ path (lib/paths.mjs is the one owner).
+if (!fileExists('modes') || readdirSync(join(ROOT, 'modes')).every(f => f === '_profile.md')) {
+  pass('No top-level modes/ system directory');
+} else {
+  fail('Top-level modes/ still holds system files (they belong in ' + MODES_DIR + ')');
+}
+{
+  const offenders = readdirSync(join(ROOT, 'scripts')).filter(f => f.endsWith('.mjs') && f !== 'test-all.mjs')
+    .filter(f => /(^|[^\w./-])modes\//m.test(readFileSync(join(ROOT, 'scripts', f), 'utf-8')));
+  if (!offenders.length) pass('No script hard-codes a top-level modes/ path (scripts/lib/paths.mjs owns it)');
+  else fail(`Scripts hard-coding top-level modes/: ${offenders.join(', ')}`);
 }
 
 // ── 9. CLAUDE.md INTEGRITY ──────────────────────────────────────

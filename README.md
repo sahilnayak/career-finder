@@ -16,7 +16,7 @@ and tracks everything. **It never applies or sends anything on its own.** You re
 1. Install [Claude Code](https://claude.ai/code), Node.js 18+, and optionally Go 1.21+ (dashboard).
 2. In this folder: `npm install` and `npx playwright install chromium` (PDF generation).
 3. Run `claude` in this folder, paste or attach your resume, and say **"set me up"**.
-   Onboarding writes `cv.md`, `config/profile.yml`, `modes/_profile.md` and `portals.yml`.
+   Onboarding writes `cv.md`, `config/profile.yml`, `config/narrative.md` and `portals.yml`.
 4. Check it: `npm run doctor`, then `npm run morning:dry` (prints every lane it would run and why
    any would be skipped, spends nothing). `node scripts/targets.mjs --test "<job title>" "<location>"`
    shows how one posting is judged.
@@ -44,7 +44,7 @@ All of it lives in `config/profile.yml` (see `config/profile.example.yml`):
 | `pipeline` | qualify score (default 4.3), daily quota, primary-role quota, window hours |
 | `outreach` | sender name/email, one-sentence bridge, three standing proof bullets |
 
-Archetypes, narrative and negotiation notes go in `modes/_profile.md`.
+Archetypes, narrative and negotiation notes go in `config/narrative.md`.
 
 ## Commands
 
@@ -82,19 +82,10 @@ cd dashboard && go build -o career-dashboard . && ./career-dashboard --path ..
 
 ## Your data stays yours
 
-Personal files (`cv.md`, `config/profile.yml`, `modes/_profile.md`, `data/`, `reports/`, `output/`)
+Personal files (`cv.md`, `config/profile.yml`, `config/narrative.md`, `data/`, `reports/`, `output/`)
 are the user layer and are never overwritten by system updates. See [`DATA_CONTRACT.md`](DATA_CONTRACT.md).
 
 ## Disclaimer
 
 Career-Finder is a local tool, not a hosted service. You are responsible for what you submit and
 for following the terms of the sites it reads. See [`LEGAL_DISCLAIMER.md`](LEGAL_DISCLAIMER.md).
-
-## Credits
-
-Based on [career-ops](https://github.com/santifer/career-ops) by
-[Santiago Fernández (santifer)](https://santifer.io), MIT licensed. See [`LICENSE`](LICENSE) and
-[`CITATION.cff`](CITATION.cff).
-
-Most of it has since been rewritten: role-agnostic onboarding from any resume, config-driven
-targeting, the LinkedIn 24h job lanes, the added ATS families and the portable morning run.

@@ -37,7 +37,7 @@
  *                li       = JD-anchored pitch clause for HM/Recruiter LinkedIn
  *                liLeader = shorter JD-anchored hero for Leader LinkedIn (tight budget; falls back to li/default)
  *              When jd is present the variant is judged on how well it ties proof to that JD line (see
- *              modes/outreach.md). Absent -> generic VARIANTS copy.
+ *              .claude/skills/career-finder/modes/outreach.md). Absent -> generic VARIANTS copy.
  */
 
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'fs';
@@ -289,7 +289,7 @@ function quotePost(text, max = 90) {
   return complete ? `"${inner}."` : `"${inner}..."`;
 }
 
-// A hiring post is the highest-signal observation in modes/outreach.md ("they literally
+// A hiring post is the highest-signal observation in .claude/skills/career-finder/modes/outreach.md ("they literally
 // asked"), so it gets its own rung above a generic authored post.
 const HIRING_POST = /\b(we'?re |we are |i'?m |i am )?(hiring|recruiting)\b|\bjoin (my|our) team\b|\bopen role|\bwe'?re looking for\b|\bopen (position|req)\b/i;
 
@@ -386,7 +386,7 @@ function peopleFromRoster(c, roster) {
       // about a req there is the worst failure mode there is.
       departed: authored.reason === 'departed',
       // THE OBSERVATION LADDER (2026-07-26). Ordered rungs, each firing only when its
-      // backing field actually exists. modes/outreach.md has specified six categories
+      // backing field actually exists. .claude/skills/career-finder/modes/outreach.md has specified six categories
       // since April; the code implemented two, and the lower one was a constant.
       //
       // The fallback rung is deliberately SHARED across recipients rather than rotated
@@ -720,7 +720,7 @@ const subj = `Your Next %ROLE% - ${SENDER}`;
 // (The candidate's own dollar achievements like "$200K+ in retention" are fine — those are proof, not company funding.)
 // Bans the COMPANY's money, never the candidate's own results. The bare verb `\braised\b`
 // used to match, so "shipped custom reporting that RAISED customer engagement 25%" — his own
-// proof point, explicitly allowed by modes/outreach.md — was flagged as a funding mention on
+// proof point, explicitly allowed by .claude/skills/career-finder/modes/outreach.md — was flagged as a funding mention on
 // 6 drafts (2026-07-27). A checker that cries wolf on legitimate proof points pressures the
 // writer into deleting them, which is the opposite of the rule's intent. `raised` now only
 // counts when a funding object follows it.
@@ -1301,7 +1301,7 @@ for (const c of spec) {
       const onTeam = (roster.selection || []).filter(s => s.teamMatch === true).length;
       if (tokens.length && onTeam === 0) {
         console.log(`! CONTACT CHECK: none of ${c.company}'s selected contacts matched the team tokens [${tokens.join(', ')}].`);
-        console.log(`  The roster may be returning off-team people (modes/outreach.md: large companies need targeted search). Verify with:`);
+        console.log(`  The roster may be returning off-team people (.claude/skills/career-finder/modes/outreach.md: large companies need targeted search). Verify with:`);
         console.log(`    "${c.company} ${roleDisplay(c.role)}"           <- peers`);
         console.log(`    "${c.company} ${tokens[0]} lead OR manager OR head"  <- hiring manager / leader`);
       }

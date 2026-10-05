@@ -27,10 +27,10 @@ the tail — LinkedIn (login) + non-ATS custom career pages.
    (sync the two ledgers: drop snippet false positives < qualify_score canonically, backfill orphan `found_at`) →
    `node scripts/feedback-outcomes.mjs --learn`.
 7. **Iterate** (cap 3 passes): if 0 new qualifiers, rotate to fresh slices + widen titles → window; bank a learning
-   to `modes/scan-web.md`.
+   to `.claude/skills/career-finder/modes/scan-web.md`.
 
 ## Slice catalog (rotate)
-- **Industry:** the industries that hire `targets.roles` (list them in `modes/_profile.md` → Scoring Notes); split into 4-6 non-overlapping slices
+- **Industry:** the industries that hire `targets.roles` (list them in `config/narrative.md` → Scoring Notes); split into 4-6 non-overlapping slices
 - **Geo:** `location.city` / `location.cities[]` / sub-regions of `location.metro`, one slice each
 - **VC portfolio:** a16z · Sequoia · Greylock · Accel · Index · Khosla · Founders Fund · Lightspeed
 - **YC:** by batch (W/S × 2021–2026)
@@ -49,4 +49,4 @@ or cap and report. The ATS sweep + zero-token core are free.
 A job at or above `pipeline.qualify_score` is **eligible** for outreach, not owed. Do not draft outreach
 from this mode, interactive or headless. The user picks jobs with `w` on the dashboard or
 `node scripts/outreach-queue.mjs add`; drafting stays draft-only and sending is always the user's call.
-`node scripts/outreach-owed.mjs` is a read-only "awaiting" view. Policy: `modes/_profile.md` -> "Outreach on qualify".
+`node scripts/outreach-owed.mjs` is a read-only "awaiting" view. Policy: `config/narrative.md` -> "Outreach on qualify".

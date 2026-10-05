@@ -17,7 +17,10 @@ data/jds/
 # User config and customization (never auto-updated)
 config/profile.yml
 portals.yml
+config/narrative.md
+# legacy narrative location, kept so an unmigrated copy is never committed
 modes/_profile.md
+data/scan-web-learnings.md
 .update-dismissed
 .update-lock
 
@@ -66,10 +69,10 @@ data/_speed-ats.tsv
 data/_all-open.tsv
 data/_browser-queue.tsv
 data/_candidates.tsv
+data/_request-ledger.tsv
 # hot tier (5-min crawler) — regenerated every cycle
 data/_hot-candidates.tsv
 data/_hot.log
-data/_request-ledger.tsv
 data/_hot.launchd.log
 data/_hot.launchd.err.log
 data/linkedin-cache/

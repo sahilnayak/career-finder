@@ -121,7 +121,7 @@ func ParseScoredJobs(careerOpsPath string) []model.ScoredJob {
 // HARD RULE (time-to-lead): the Found panel shows ONLY qualifiers found in the last 24h.
 // The pipeline exists to surface roles within 24h of posting; a job older than the window is
 // past its time-to-lead value, so it drops off the board regardless of applied/dismissed state.
-// Do not reintroduce an unbounded/persistent Found list — keep the window. See modes/dashboard.md.
+// Do not reintroduce an unbounded/persistent Found list — keep the window. See .claude/skills/career-finder/modes/dashboard.md.
 func QualifiersInWindow(jobs []model.ScoredJob, minScore float64, window time.Duration) []model.ScoredJob {
 	cutoff := time.Now().Add(-window)
 	var out []model.ScoredJob
@@ -157,7 +157,7 @@ func QualifiersInWindow(jobs []model.ScoredJob, minScore float64, window time.Du
 // `stale` — the re-verified-live fallback the Found panel shows when the 24h board is empty
 // (the UI mirror of daily-quota's LIVE FALLBACK). These are past the 24h time-to-lead window
 // but still recent and worth a re-verify before applying; found_at is NEVER re-stamped to
-// fake freshness. Newest first. See modes/_profile.md "Empty board -> keep searching" and
+// fake freshness. Newest first. See config/narrative.md "Empty board -> keep searching" and
 // memory feedback_empty_board_keep_searching.
 func LiveLeads(jobs []model.ScoredJob, minScore float64, fresh, stale time.Duration) []model.ScoredJob {
 	now := time.Now()
@@ -427,7 +427,7 @@ func AttachOutreachPaths(jobs []model.ScoredJob, careerOpsPath string) {
 //
 // Filenames come in two shapes. The modern one carries the role,
 // cv-{candidate}-{company}-{role-slug}-{date}.pdf; the legacy one is company-only,
-// cv-{candidate}-{company}-{date}.pdf. {candidate} is the user's name slug (modes/pdf.md), which
+// cv-{candidate}-{company}-{date}.pdf. {candidate} is the user's name slug (.claude/skills/career-finder/modes/pdf.md), which
 // the dashboard does not need to know: it locates "-{company}-" after the "cv-" prefix.
 // A role-carrying file must match the role, because an
 // employer routinely runs several requisitions at once and the resume is tailored per req, not per

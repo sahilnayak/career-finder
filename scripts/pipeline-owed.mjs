@@ -154,7 +154,7 @@ function hasOutreach(company, role, url) {
 // LinkedIn/email budget (dashboard `w` -> data/outreach-queue.tsv). The report is still owed
 // unconditionally (cheap, headless); the resume shares this gate since PDF became interactive-only. So a job only owes OUTREACH when the user
 // picked it. An un-picked qualifier missing outreach is a decision, not a gap.
-// See modes/outreach.md + memory feedback_outreach_user_selected.
+// See .claude/skills/career-finder/modes/outreach.md + memory feedback_outreach_user_selected.
 const picked = readTsv(`${ROOT}data/outreach-queue.tsv`)
   .filter(r => (r.status || 'selected') !== 'drafted');
 function isPickedForOutreach(company, role, url) {

@@ -72,7 +72,7 @@ Open a new terminal tab in the career-finder project root and run:
 - JD-mapped bullets still auto-generate for every eligible qualifier (headless, no LinkedIn cost), so a picked job drafts immediately.
 - Un-picked qualifiers are surfaced by `node scripts/outreach-queue.mjs awaiting` and by the SessionStart hook; they age off the board at 24h like any other lead.
 
-Full rule and the company-size LinkedIn depth switch live in `modes/outreach.md`.
+Full rule and the company-size LinkedIn depth switch live in `.claude/skills/career-finder/modes/outreach.md`.
 
 ## Screens
 

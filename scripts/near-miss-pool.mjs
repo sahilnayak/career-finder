@@ -3,7 +3,7 @@
 /**
  * near-miss-pool.mjs — emit the 3.8-4.2 near-miss pool for a full-JD re-read.
  *
- * WHY THIS EXISTS. `modes/_profile.md` has named this escalation step 1 since 2026-06-10 —
+ * WHY THIS EXISTS. `config/narrative.md` has named this escalation step 1 since 2026-06-10 —
  * "full-JD re-read of every 3.8-4.2 near-miss from the last 24h", citing Learning Commons going
  * 3.8 -> 4.3 on a full-JD read — but nothing ever implemented it. The keep-search loop hunted
  * NET-NEW supply instead and wrote 0 rows on 40 of 41 rounds, while the near-miss pool sat

@@ -78,7 +78,7 @@ func NewJobsModel(t theme.Theme, jobs []model.ScoredJob, width, height int) Jobs
 		width:    width,
 		height:   height,
 		minScore: 4.3,
-		window:   24 * time.Hour, // default; main.go applies pipeline.window_hours via WithBoard. See modes/dashboard.md.
+		window:   24 * time.Hour, // default; main.go applies pipeline.window_hours via WithBoard. See .claude/skills/career-finder/modes/dashboard.md.
 		// staleWindow bounds the (disabled) LIVE LEADS fallback: re-verified-live qualifiers up to 7d old.
 		staleWindow: 7 * 24 * time.Hour,
 	}
@@ -149,7 +149,7 @@ func (m JobsModel) curList() []model.ScoredJob {
 
 // leftList is the left panel's content: the 24h Found qualifiers, or — when that is empty —
 // the re-verified-live fallback (>24h, within staleWindow), so the board is never blank when
-// recent qualifiers exist. See "Empty board -> keep searching" (modes/_profile.md).
+// recent qualifiers exist. See "Empty board -> keep searching" (config/narrative.md).
 func (m JobsModel) leftList() []model.ScoredJob {
 	if len(m.found) > 0 {
 		return m.found

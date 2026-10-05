@@ -33,8 +33,8 @@ The **headless `websearch` lane in `scripts/morning.mjs`** (see §Headless) cann
    §Learnings BEFORE scoring**, so the expensive `offer` rubric runs only on plausible contenders. This is
    the main efficiency lever and it tightens every iteration.
 3. **Score with the `offer` rubric** — for each survivor pull the JD (LinkedIn JSON-LD `description`, or open
-   the posting), then score /5 per `modes/offer.md` + `modes/_shared.md` against `cv.md` + `modes/_profile.md`:
-   CV match · North Star (archetypes from `modes/_profile.md`) · Comp vs `compensation` in the profile · Cultural signals · Red flags. Use the
+   the posting), then score /5 per `.claude/skills/career-finder/modes/offer.md` + `.claude/skills/career-finder/modes/_shared.md` against `cv.md` + `config/narrative.md`:
+   CV match · North Star (archetypes from `config/narrative.md`) · Comp vs `compensation` in the profile · Cultural signals · Red flags. Use the
    offer-mode **location override** (the comb already validated location — don't re-reject).
    Generate the full A–G report only for qualifiers (or on request) — in the loop, compute the score + a
    one-line why.
@@ -62,7 +62,7 @@ For each title in `targets.roles`, with `{AREA}` = `location.metro` (or `city, s
    JD + liveness: open `/jobs/view/{id}` and read the `application/ld+json` JobPosting.
 2. **Google Jobs** — `<title> <AREA>` → Jobs → "Date posted: Today".
 3. **Startup / niche boards** — Wellfound, Built In (your metro), YC work-at-a-startup, plus any
-   boards specific to the target career listed in `modes/_profile.md`.
+   boards specific to the target career listed in `config/narrative.md`.
 4. **Indeed** — `q=<title>&l=<AREA>&fromage=1` (bot-walled; stealth browser).
 5. ATS boards (Ashby/Greenhouse/Lever) via `site:` — overflow only.
 
@@ -73,10 +73,9 @@ Per iteration log: `combed N → pre-filtered M → scored M → kept K (≥THRE
 Final qualifiers table: `# | Company | Role | Location | Posted | Score | why (1 line) | Link`.
 Then: learnings added this run + offer to generate full A–G reports / drop qualifiers into `pipeline.md`.
 
-## Learnings (append-only — each iteration adds one; newest first)
-<!-- Starts empty for a new user. `feedback-outcomes.mjs --learn` and each scan-web iteration
-     append dated one-line learnings here (yield per source, title families that respond,
-     pre-filter rules). Format: `- YYYY-MM-DD: <learning>. <what changes in step 2 or §Sources>.` -->
+## Learnings
+Learnings are user data and live in `data/scan-web-learnings.md` (append-only, newest first; created
+on first write). Read it before step 2; each iteration prepends ONE dated line there, never here.
 
 ## LinkedIn coverage — guest API is NOT full coverage
 

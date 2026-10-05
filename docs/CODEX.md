@@ -31,17 +31,17 @@ npx playwright install chromium
 
 | User intent | Files Codex should read |
 |-------------|-------------------------|
-| Raw JD text or job URL | `modes/_shared.md` + `modes/auto-pipeline.md` |
-| Single evaluation only | `modes/_shared.md` + `modes/offer.md` |
-| Multiple offers | `modes/_shared.md` + `modes/offers.md` |
-| Portal scan | `modes/_shared.md` + `modes/scan.md` |
-| PDF generation | `modes/_shared.md` + `modes/pdf.md` |
-| Live application help | `modes/_shared.md` + `modes/apply.md` |
-| Pipeline inbox processing | `modes/_shared.md` + `modes/pipeline.md` |
-| Tracker status | `modes/tracker.md` |
-| Deep company research | `modes/deep.md` |
-| Training / certification review | `modes/training.md` |
-| Project evaluation | `modes/project.md` |
+| Raw JD text or job URL | `.claude/skills/career-finder/modes/_shared.md` + `.claude/skills/career-finder/modes/auto-pipeline.md` |
+| Single evaluation only | `.claude/skills/career-finder/modes/_shared.md` + `.claude/skills/career-finder/modes/offer.md` |
+| Multiple offers | `.claude/skills/career-finder/modes/_shared.md` + `.claude/skills/career-finder/modes/offers.md` |
+| Portal scan | `.claude/skills/career-finder/modes/_shared.md` + `.claude/skills/career-finder/modes/scan.md` |
+| PDF generation | `.claude/skills/career-finder/modes/_shared.md` + `.claude/skills/career-finder/modes/pdf.md` |
+| Live application help | `.claude/skills/career-finder/modes/_shared.md` + `.claude/skills/career-finder/modes/apply.md` |
+| Pipeline inbox processing | `.claude/skills/career-finder/modes/_shared.md` + `.claude/skills/career-finder/modes/pipeline.md` |
+| Tracker status | `.claude/skills/career-finder/modes/tracker.md` |
+| Deep company research | `.claude/skills/career-finder/modes/deep.md` |
+| Training / certification review | `.claude/skills/career-finder/modes/training.md` |
+| Project evaluation | `.claude/skills/career-finder/modes/project.md` |
 
 The key point: Codex support is additive. It should route into the existing
 Career-Finder modes and scripts rather than introducing a parallel automation
@@ -50,7 +50,7 @@ layer.
 ## Behavioral Rules
 
 - Treat raw JD text or a job URL as the full auto-pipeline path unless the user explicitly asks for evaluation only.
-- Keep all personalization in `config/profile.yml`, `modes/_profile.md`, `article-digest.md`, or `portals.yml`.
+- Keep all personalization in `config/profile.yml`, `config/narrative.md`, `article-digest.md`, or `portals.yml`.
 - Never verify a job’s live status with generic web fetch when Playwright is available.
 - Never submit an application for the user.
 - Never add new tracker rows directly to `data/applications.md`; use the TSV addition flow and `scripts/merge-tracker.mjs`.

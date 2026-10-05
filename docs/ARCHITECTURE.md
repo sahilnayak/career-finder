@@ -5,7 +5,7 @@
 ```
                     ┌─────────────────────────────────┐
                     │         Claude Code Agent        │
-                    │   (reads CLAUDE.md + modes/*.md) │
+                    │   (reads CLAUDE.md + .claude/skills/career-finder/modes/*.md) │
                     └──────────┬──────────────────────┘
                                │
             ┌──────────────────┼──────────────────────┐

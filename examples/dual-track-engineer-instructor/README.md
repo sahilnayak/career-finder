@@ -44,7 +44,7 @@ Use single-track instead if:
 
 ## How dual-track changes the rest of career-finder
 
-### `modes/_shared.md`
+### `.claude/skills/career-finder/modes/_shared.md`
 List both archetypes in the "North Star -- Target Roles" table with `fit: primary`. The skill applies equal rigor to all primary archetypes, which is what you need here.
 
 ### `cv.md`
@@ -102,5 +102,5 @@ Dual-track candidates get read as overqualified for pure teaching roles ("you wi
 
 - `../cv-example.md` -- single-track CV example for comparison.
 - `../../config/profile.example.yml` -- the canonical profile schema this example extends.
-- `../../modes/_shared.md` -- where archetypes feed into framing logic.
+- `../../.claude/skills/career-finder/modes/_shared.md` -- where archetypes feed into framing logic.
 - `../../CONTRIBUTING.md` -- this example was contributed under "Add example CVs for different roles".

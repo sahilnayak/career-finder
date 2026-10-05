@@ -35,7 +35,7 @@
 
 ## Your Scoring Notes
 
-<!-- Optional user-specific weighting on top of modes/_shared.md:
+<!-- Optional user-specific weighting on top of .claude/skills/career-finder/modes/_shared.md:
      must-haves, dealbreakers, industries to prefer or avoid, tenure gates
      the candidate does or does not meet. -->
 

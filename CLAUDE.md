@@ -11,12 +11,12 @@ location, threshold and quota is read from `config/profile.yml` through `scripts
 ## Language
 
 Everything you generate is written in English unless the user targets a non-English posting and
-has set `language.modes_dir` in `config/profile.yml` (then use `modes/{de,fr,ja,pt,ru}/`), or asks
+has set `language.modes_dir` in `config/profile.yml` (then use `.claude/skills/career-finder/modes/{de,fr,ja}/`), or asks
 for another language explicitly. Do not translate user-layer files unless asked.
 
 ## First Run -- Onboarding (CRITICAL)
 
-If `cv.md`, `config/profile.yml`, `modes/_profile.md` or `portals.yml` is missing, or
+If `cv.md`, `config/profile.yml`, `config/narrative.md` or `portals.yml` is missing, or
 `targets.roles` in the profile is empty, the system is not set up: **stop and run the
 `career-finder-onboarding` skill before any evaluation, scan or other mode.**
 
@@ -28,8 +28,8 @@ Onboarding, in order:
    any example in this repo shows.
 3. Ask for location: metro/city/state/country, radius, remote policy
    (`onsite | hybrid | remote-country | any`). Fill `lat`/`lng` and `linkedin_geo_id` when known.
-4. Write `config/profile.yml` (copy from `config/profile.example.yml`), `modes/_profile.md` (from
-   `modes/_profile.template.md`) and `portals.yml` (from `templates/portals.example.yml`, with
+4. Write `config/profile.yml` (copy from `config/profile.example.yml`), `config/narrative.md` (from
+   `.claude/skills/career-finder/modes/_profile.template.md`) and `portals.yml` (from `templates/portals.example.yml`, with
    companies relevant to the confirmed roles and location).
 5. Verify with `node scripts/targets.mjs` and `node scripts/targets.mjs --test "<title>" "<loc>"`.
 
@@ -54,20 +54,20 @@ are cancelled by a matching positive keyword.
 Two layers. See `DATA_CONTRACT.md` for the full list.
 
 **User layer (never auto-updated, personalization goes HERE):** `cv.md`, `config/profile.yml`,
-`modes/_profile.md`, `article-digest.md`, `portals.yml`, `data/*`, `reports/*`, `output/*`,
+`config/narrative.md`, `article-digest.md`, `portals.yml`, `data/*`, `reports/*`, `output/*`,
 `interview-prep/*`.
 
-**System layer (auto-updatable, no user data):** `modes/_shared.md` and all other modes,
+**System layer (auto-updatable, no user data):** `.claude/skills/career-finder/modes/_shared.md` and all other modes,
 `CLAUDE.md`, `scripts/*.mjs`, `dashboard/*`, `templates/*`, `batch/*`.
 
 **When the user asks to customize anything (archetypes, narrative, scripts, proof points, location
-policy, comp targets), write to `modes/_profile.md` or `config/profile.yml`. Never put user-specific
-content in `modes/_shared.md` or a script.**
+policy, comp targets), write to `config/narrative.md` or `config/profile.yml`. Never put user-specific
+content in `.claude/skills/career-finder/modes/_shared.md` or a script.**
 
 ## Workflow Rules
 
 When asked to make a workflow change, treat it as a standing rule: apply it to the artifact at hand
-AND persist it where future runs will read it (`modes/_profile.md`, `config/profile.yml`, or the
+AND persist it where future runs will read it (`config/narrative.md`, `config/profile.yml`, or the
 relevant mode file). Say where you put it.
 
 ## Skill Modes
@@ -110,7 +110,7 @@ empty board stays empty; never backfill older finds to fill it.
 
 ### Archetypes
 
-Role archetypes, proof points and narrative are user data and live in `modes/_profile.md`. Modes
+Role archetypes, proof points and narrative are user data and live in `config/narrative.md`. Modes
 must read archetypes from there; they never hard-code a career.
 
 ### CV Source of Truth
@@ -265,7 +265,3 @@ In `applications.md` score comes before status; `merge-tracker.mjs` swaps them.
 | `SKIP` | Doesn't fit, don't apply |
 
 No bold, dates or extra text in the status field.
-
-## Credits
-
-Forked from [career-ops](https://github.com/santifer/career-ops) by santifer (MIT). See `LICENSE`.

@@ -27,7 +27,7 @@ Table with:
 Read `cv.md`. Build a table mapping each JD requirement to exact lines in the CV.
 
 **Adapted to the archetype:** use the "Emphasize about you" column of the Adaptive Framing table in
-`modes/_profile.md` for the detected archetype to choose which proof points lead.
+`config/narrative.md` for the detected archetype to choose which proof points lead.
 
 A **gaps** section with a mitigation strategy for each. For each gap:
 1. Is it a hard blocker or a nice-to-have?
@@ -71,7 +71,7 @@ The **Reflection** column captures what was learned or what would be done differ
 **Story Bank:** If `interview-prep/story-bank.md` exists, check if any of these stories are already there. If not, append new ones. Over time this builds a reusable bank of 5-10 master stories that can be adapted to any interview question.
 
 **Selected and framed by archetype:** emphasize what the detected archetype's row in
-`modes/_profile.md` says hiring managers buy.
+`config/narrative.md` says hiring managers buy.
 
 Also include:
 - 1 recommended case study (which of their projects to present and how)

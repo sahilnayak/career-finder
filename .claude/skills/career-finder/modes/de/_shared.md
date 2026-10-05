@@ -30,7 +30,7 @@ Die Skill behandelt ALLE Zielrollen mit gleicher Sorgfalt. Keine ist primär ode
 
 | Archetyp | Thematische Achsen | Was gekauft wird |
 |----------|--------------------|------------------|
-| {archetypes from modes/_profile.md -- filled by onboarding from the candidate's resume; never use a built-in list} | | |
+| {archetypes from config/narrative.md -- filled by onboarding from the candidate's resume; never use a built-in list} | | |
 
 <!-- [ANPASSEN] Passe die Archetypen oben an deine Zielrollen an.
      Beispiel für Backend-Engineering:
@@ -45,7 +45,7 @@ Die Skill behandelt ALLE Zielrollen mit gleicher Sorgfalt. Keine ist primär ode
 
 | Wenn die Rolle ist... | Beim Kandidaten betonen... | Quellen für Proof Points |
 |-----------------------|----------------------------|--------------------------|
-| {archetypes from modes/_profile.md} | | |
+| {archetypes from config/narrative.md} | | |
 
 <!-- [ANPASSEN] Ordne deine konkreten Projekte/Artikel den Archetypen oben zu -->
 

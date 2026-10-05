@@ -3,7 +3,7 @@
 <!-- ============================================================
      THIS FILE IS AUTO-UPDATABLE. Don't put personal data here.
 
-     Your customizations go in modes/_profile.md (never auto-updated).
+     Your customizations go in config/narrative.md (never auto-updated).
      This file contains system rules, scoring logic, and tool config
      that improve with each career-finder release.
      ============================================================ -->
@@ -15,11 +15,11 @@
 | cv.md | `cv.md`（プロジェクトルート） | 常に |
 | article-digest.md | `article-digest.md`（存在する場合） | 常に（詳細な proof points） |
 | profile.yml | `config/profile.yml` | 常に（アイデンティティとターゲット求人） |
-| _profile.md | `modes/_profile.md` | 常に（ユーザーのアーキタイプ、ナラティブ、交渉） |
+| config/narrative.md | 常に（ユーザーのアーキタイプ、ナラティブ、交渉） |
 
 **ルール：proof point のメトリクスを絶対にハードコードしない。** 評価時に `cv.md` と `article-digest.md` から読み取ること。
 **ルール：記事・プロジェクトのメトリクスは、`article-digest.md` が `cv.md` より優先される**（`cv.md` には古い数値が含まれている可能性がある）。
-**ルール：このファイルの後に `_profile.md` を読む。`_profile.md` のユーザーカスタマイズはここのデフォルト値を上書きする。**
+**ルール：このファイルの後に `config/narrative.md` を読む。`config/narrative.md` のユーザーカスタマイズはここのデフォルト値を上書きする。**
 
 ---
 
@@ -30,7 +30,7 @@
 | 次元 | 測定する内容 |
 |------|-------------|
 | CV マッチ | スキル、経験、proof point の整合 |
-| North Star の整合 | 求人がユーザーのターゲットアーキタイプ（`_profile.md` より）にどれだけ合うか |
+| North Star の整合 | 求人がユーザーのターゲットアーキタイプ（`config/narrative.md` より）にどれだけ合うか |
 | 報酬 | 給与 vs 市場（5=上位四分位、1=大幅に下回る） |
 | カルチャーシグナル | 企業文化、成長性、安定性、リモートポリシー |
 | Red flags | ブロッカー、警告（減点調整） |
@@ -48,7 +48,7 @@ skill はすべてのターゲット求人を同等の注意で扱う。プラ�
 
 | アーキタイプ | テーマ軸 | 企業が求めているもの |
 |-------------|---------|---------------------|
-| {archetypes from modes/_profile.md -- filled by onboarding from the candidate's resume; never use a built-in list} | | |
+| {archetypes from config/narrative.md -- filled by onboarding from the candidate's resume; never use a built-in list} | | |
 
 <!-- [PERSONALIZAR] 上記のアーキタイプをあなたのターゲット求人に合わせて調整。
      バックエンドエンジニアリングの例：
@@ -63,7 +63,7 @@ skill はすべてのターゲット求人を同等の注意で扱う。プラ�
 
 | 求人が... | 候補者で強調するもの... | Proof Points のソース |
 |----------|----------------------|----------------------|
-| {archetypes from modes/_profile.md} | | |
+| {archetypes from config/narrative.md} | | |
 
 <!-- [PERSONALIZAR] あなたの具体的なプロジェクト・記事を上記のアーキタイプにマッピング -->
 
@@ -187,9 +187,9 @@ skill はすべてのターゲット求人を同等の注意で扱う。プラ�
 ### 常にする
 
 0. **カバーレター：** フォームが添付または記入を許可する場合、必ず含める。履歴書と同じデザインの PDF。内容：JD の引用を proof point にマッピング、関連ケーススタディへのリンク。最大 1 ページ。
-1. 求人を評価する前に `cv.md`、`_profile.md`、`article-digest.md`（存在する場合）を読む
+1. 求人を評価する前に `cv.md`、`config/narrative.md`、`article-digest.md`（存在する場合）を読む
 1b. **各セッションの最初の評価で：** Bash で `node scripts/cv-sync-check.mjs` を実行。警告があれば続行前に候補者に知らせる
-2. 求人のアーキタイプを検出し、`_profile.md` に従ってフレーミングを適応させる
+2. 求人のアーキタイプを検出し、`config/narrative.md` に従ってフレーミングを適応させる
 3. マッチング時、履歴書の正確な行を引用する
 4. 報酬と企業データのために WebSearch を使う
 5. 各評価後に tracker に記録する
@@ -207,7 +207,7 @@ skill はすべてのターゲット求人を同等の注意で扱う。プラ�
 | WebSearch | 報酬調査、トレンド、企業カルチャー、LinkedIn コンタクト、求人記述のフォールバック |
 | WebFetch | 静的ページから求人記述を抽出するためのフォールバック |
 | Playwright | 求人がまだアクティブか検証（browser_navigate + browser_snapshot）、SPA からの記述抽出。**クリティカル：Playwright を使う 2 つ以上のエージェントを並列起動しない — 同じブラウザインスタンスを共有するため** |
-| Read | cv.md、_profile.md、article-digest.md、cv-template.html |
+| Read | cv.md、config/narrative.md、article-digest.md、cv-template.html |
 | Write | PDF 用の一時 HTML、applications.md、reports .md |
 | Edit | tracker の更新 |
 | Bash | `node scripts/generate-pdf.mjs` |

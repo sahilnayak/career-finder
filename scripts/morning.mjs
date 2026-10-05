@@ -73,6 +73,7 @@ import { existsSync, mkdirSync, rmdirSync, statSync, appendFileSync, readFileSyn
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MODES_DIR, NARRATIVE_MD, resolveNarrative } from './lib/paths.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(ROOT);
@@ -101,10 +102,10 @@ const flag = k => argv.includes(k);
 const opt = (k, d) => { const i = argv.indexOf(k); return i !== -1 && argv[i + 1] ? argv[i + 1] : d; };
 const DRY = flag('--dry-run');
 const MODE = opt('--mode', 'daily');
-const SKIP = new Set(opt('--skip', '').split(',').map(s => s.trim()).filter(Boolean));
 // One run id for this morning run and every lane it spawns (children inherit the env), so the
 // request ledger can total the whole run. See scripts/request-ledger.mjs.
 if (!process.env.CAREER_FINDER_RUN_ID) process.env.CAREER_FINDER_RUN_ID = `${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}-${MODE}-${process.pid}`;
+const SKIP = new Set(opt('--skip', '').split(',').map(s => s.trim()).filter(Boolean));
 const ONLY = new Set((process.env.MORNING_ONLY || '').split(',').map(s => s.trim()).filter(Boolean));
 /** A lane name matches a selector set by exact name or by any `:`-prefix (`linkedin`, `linkedin:crawl`). */
 const selected = (set, name) => { const p = name.split(':'); for (let i = 1; i <= p.length; i++) if (set.has(p.slice(0, i).join(':'))) return true; return false; };
@@ -348,7 +349,7 @@ const LOCATION_RULE = {
 
 const SCORING_RULES = [
   `Candidate: ${NAME}. Target roles: ${ROLES.join(', ')} (primary: ${PRIMARY}). Location rule: ${LOCATION_RULE}.`,
-  `GUARD (these rules win over anything in the mode files): score each candidate 1.0-5.0 against modes/offer.md + modes/_shared.md, reading cv.md and modes/_profile.md for the candidate. A score >= ${Q} is QUALIFIED.`,
+  `GUARD (these rules win over anything in the mode files): score each candidate 1.0-5.0 against ${MODES_DIR}/offer.md + ${MODES_DIR}/_shared.md, reading cv.md and ${resolveNarrative() || NARRATIVE_MD} for the candidate. A score >= ${Q} is QUALIFIED.`,
   'CANONICAL-JD RULE: never score from an aggregator or LinkedIn snippet. Resolve the employer ATS posting (Greenhouse/Ashby/Lever/Workday/SmartRecruiters APIs preferred) and score its JD.',
   'The ATS is the only source for: whether the req still exists and is open (404/expired = verdict stale), the real location, comp, and any years-of-experience gate. Quote a years gate verbatim and note whether it sits under a hard heading (Requirements) or a soft one (Nice to have).',
   'Age is NOT a scoring penalty: a re-promoted old req is still hiring. Record the real ATS publish date and lead the why with it when the req is old.',
@@ -359,9 +360,9 @@ const SCORING_RULES = [
   `For a score >= ${Q} also append to data/qualifiers.tsv (tab-separated: date, company, role, score, why, url, source, posted_iso where posted_iso is the CURRENT time, i.e. when this run qualified it, NOT the ATS/aggregator date) if the url is not already there.`,
 ].join('\n');
 /** Every scoring prompt opens with this (#12): the skill owns the method, SCORING_RULES is the guard. */
-const FOLLOW_OFFER = 'Follow modes/offer.md (scoring method and dimensions) for every candidate.';
+const FOLLOW_OFFER = `Follow ${MODES_DIR}/offer.md (scoring method and dimensions) for every candidate.`;
 /** Headless section loader text (#5): load only the `## Headless` section; inline text overrides it. */
-const headless = mode => `Read ONLY the "## Headless" section of modes/${mode}.md (not the rest of that file) and follow it; the instructions below override it.`;
+const headless = mode => `Read ONLY the "## Headless" section of ${MODES_DIR}/${mode}.md (not the rest of that file) and follow it; the instructions below override it.`;
 
 // ── LinkedIn login helpers (raw CDP, never Playwright) ──────────────────────────────────────
 const LI_FIX = 'log in once: npm run linkedin:login';
@@ -662,7 +663,7 @@ node('resolve-nominations', 'scripts/resolve-nominations.mjs');
 // ════════════════════════════════════════════════════════════════════════════════════════════
 const ATS_N = rowsIn('data/_candidates.tsv'), LI_N = jsonLen('data/_speed-li.json'), WEB_N = rowsIn('data/_web-roles.tsv');
 log(`signals: ats=${ATS_N} linkedin=${LI_N} web=${WEB_N}`);
-const scoreStatus = claude('score', `${FOLLOW_OFFER} Queue handling follows modes/pipeline.md.
+const scoreStatus = claude('score', `${FOLLOW_OFFER} Queue handling follows ${MODES_DIR}/pipeline.md.
 Pipeline scoring (headless). HARD CAP: process AT MOST ${SCORE_CAP} candidates this run; the rest roll to the next run. Fill up to ${Math.ceil(SCORE_CAP * 0.6)} slots with ${PRIMARY} candidates first, then the other target roles, most recent first; spill unused slots either way.
 Candidates: data/_candidates.tsv (ATS, header row), data/_speed-li.json (LinkedIn cards), data/_web-roles.tsv (header: date/company/role/location/posted/url/source).
 For any candidate whose url is on linkedin.com, look it up in data/_resolved-noms.tsv by company+role and score its canonical_url instead; skip rows marked AMBIGUOUS. Score candidates that already have a real ATS url before linkedin.com ones.
@@ -680,7 +681,7 @@ node('snapshot-jd', 'scripts/snapshot-jd.mjs');
 if (DAILY) {
   node('jd-pdfs', 'scripts/gen-jd-pdfs.mjs');
   const owedReports = (() => { try { return JSON.parse(execFileSync(process.execPath, ['scripts/pipeline-owed.mjs', '--json'], { encoding: 'utf8', timeout: 60000 })).filter(j => (j.missing || []).some(m => m === 'report' || m === 'full-report')).length; } catch { return 1; } })();
-  claude('reports', `Follow modes/offer.md (blocks A-G). Write the FULL A-G evaluation reports owed. HARD CAP: write AT MOST ${REPORT_CAP} reports this run (highest score first); the rest stay owed for the next run. STEP 1: run 'node scripts/pipeline-owed.mjs --json' and take every job whose missing list includes 'report' or 'full-report' (a stub exists but a real evaluation is owed). If none, end with 'reports: 0 owed'. STEP 2: for each, read modes/offer.md, modes/_shared.md, modes/_profile.md and cv.md, and the canonical JD (use data/jds/ when a snapshot exists). STEP 3: write reports/{NNN}-{company-slug}-{role-slug}-{YYYY-MM-DD}.md where NNN comes from 'node scripts/next-report-num.mjs', incrementing per report. Blocks A-G; header carries Date, Posted (real ATS age), Archetype, Score, URL, JD, PDF and Legitimacy, plus '**Verification:** unconfirmed (batch mode)' (no browser in headless runs) and '**PDF:** ❌' (no PDF is generated headless). ${HARD_GATES ? `HARD GATES: ${HARD_GATES} ` : ''}RULES: every claim true to cv.md; quote any years gate verbatim and say whether it clears; name the exact requisition and never merge two reqs at one employer; flag location contradictions between ATS fields and the JD body; never inflate a score to match the ledger. STEP 4: for each report write batch/tracker-additions/{NNN}-{company-slug}.tsv (9 tab-separated columns: num, date, company, role, status, score, pdf (always ❌ here), report-link, notes) then run 'node scripts/merge-tracker.mjs'. FORMAT: copy the layout of the most recent full report in reports/; if none exists, use the block order and headings of modes/offer.md (A-G) as the template. STEP 5: re-run 'node scripts/pipeline-owed.mjs' and use its count for M. End with one line: 'reports: wrote N, owed now M'.`, { model: REPORT_MODEL, when: DRY || owedReports > 0, whyNot: 'pipeline-owed: no reports owed' });
+  claude('reports', `Follow ${MODES_DIR}/offer.md (blocks A-G). Write the FULL A-G evaluation reports owed. HARD CAP: write AT MOST ${REPORT_CAP} reports this run (highest score first); the rest stay owed for the next run. STEP 1: run 'node scripts/pipeline-owed.mjs --json' and take every job whose missing list includes 'report' or 'full-report' (a stub exists but a real evaluation is owed). If none, end with 'reports: 0 owed'. STEP 2: for each, read ${MODES_DIR}/offer.md, ${MODES_DIR}/_shared.md, ${resolveNarrative() || NARRATIVE_MD} and cv.md, and the canonical JD (use data/jds/ when a snapshot exists). STEP 3: write reports/{NNN}-{company-slug}-{role-slug}-{YYYY-MM-DD}.md where NNN comes from 'node scripts/next-report-num.mjs', incrementing per report. Blocks A-G; header carries Date, Posted (real ATS age), Archetype, Score, URL, JD, PDF and Legitimacy, plus '**Verification:** unconfirmed (batch mode)' (no browser in headless runs) and '**PDF:** ❌' (no PDF is generated headless). ${HARD_GATES ? `HARD GATES: ${HARD_GATES} ` : ''}RULES: every claim true to cv.md; quote any years gate verbatim and say whether it clears; name the exact requisition and never merge two reqs at one employer; flag location contradictions between ATS fields and the JD body; never inflate a score to match the ledger. STEP 4: for each report write batch/tracker-additions/{NNN}-{company-slug}.tsv (9 tab-separated columns: num, date, company, role, status, score, pdf (always ❌ here), report-link, notes) then run 'node scripts/merge-tracker.mjs'. FORMAT: copy the layout of the most recent full report in reports/; if none exists, use the block order and headings of ${MODES_DIR}/offer.md (A-G) as the template. STEP 5: re-run 'node scripts/pipeline-owed.mjs' and use its count for M. End with one line: 'reports: wrote N, owed now M'.`, { model: REPORT_MODEL, when: DRY || owedReports > 0, whyNot: 'pipeline-owed: no reports owed' });
   // Stubs AFTER the A-G lane, only for qualifiers the report cap left uncovered; running it first
   // gave one job a stub plus a full report under two numbers.
   node('backfill-reports', 'scripts/backfill-reports.mjs', ['--min', String(Q)]);
@@ -774,7 +775,7 @@ if (DAILY && (DRY || onceToday('outcomes'))) {
     const r = spawnSync(process.execPath, ['scripts/applied-watchlist.mjs'], { encoding: 'utf8' });
     try { return JSON.parse(r.stdout).length; } catch { return 0; }
   })();
-  claude('outcomes', `Read ONLY the "## Outcomes (headless)" section of modes/feedback.md and follow it; the steps below override it.\nApplication outcome detection, READ-ONLY Gmail. STEP 1: run 'node scripts/applied-watchlist.mjs' for the JSON list of in-flight applied jobs. STEP 2: for each, search Gmail (gmail MCP search_emails, read_email) for messages since the applied date from that company. NEVER send, reply, draft, delete, archive, label or modify anything. STEP 3: classify the latest signal: rejected / interview (incl. scheduling links) / offer / responded (a real human reply, not an auto-acknowledgement) / NONE. Be conservative. STEP 4: for each decided signal run 'node scripts/record-outcome.mjs "<company>" <responded|interview|offer|rejected>' (it refuses ambiguous keys; narrow the key with the url if so), never regress a status, and update that row's Status in data/applications.md with a dated '(auto-detected from Gmail)' note; never add rows. Do NOT run feedback-outcomes --learn (the run does that once, after this step). End with one line: 'outcomes: rejected R, interview I, offer O, responded P'.`,
+  claude('outcomes', `Read ONLY the "## Outcomes (headless)" section of ${MODES_DIR}/feedback.md and follow it; the steps below override it.\nApplication outcome detection, READ-ONLY Gmail. STEP 1: run 'node scripts/applied-watchlist.mjs' for the JSON list of in-flight applied jobs. STEP 2: for each, search Gmail (gmail MCP search_emails, read_email) for messages since the applied date from that company. NEVER send, reply, draft, delete, archive, label or modify anything. STEP 3: classify the latest signal: rejected / interview (incl. scheduling links) / offer / responded (a real human reply, not an auto-acknowledgement) / NONE. Be conservative. STEP 4: for each decided signal run 'node scripts/record-outcome.mjs "<company>" <responded|interview|offer|rejected>' (it refuses ambiguous keys; narrow the key with the url if so), never regress a status, and update that row's Status in data/applications.md with a dated '(auto-detected from Gmail)' note; never add rows. Do NOT run feedback-outcomes --learn (the run does that once, after this step). End with one line: 'outcomes: rejected R, interview I, offer O, responded P'.`,
     { needs: ['gmail_on', 'gmail', 'gmail_mcp'], when: applied > 0, whyNot: 'applied-watchlist returned [] (no in-flight applied jobs, no claude call)' });
   node('feedback-outcomes', 'scripts/feedback-outcomes.mjs', ['--learn']);
 }
@@ -802,13 +803,13 @@ log(`=== career-finder ${MODE} run done ===`);
 const { failed, quotaShort } = splitFailures(results);
 const qLine = DRY ? '' : quotaLine(q, quotaShort, PRIMARY);
 if (qLine) console.log(`\n${qLine}`);
-if (failed.length) {
 if (!DRY) {
   try {
     const { readLedger, aggregate, formatSummary } = await import('./request-ledger.mjs');
     console.log('\n' + formatSummary(aggregate(readLedger({ runId: process.env.CAREER_FINDER_RUN_ID })), `REQUEST LEDGER run ${process.env.CAREER_FINDER_RUN_ID}`));
   } catch (e) { console.log(`\nREQUEST LEDGER: unavailable (${e.message})`); }
 }
+if (failed.length) {
   console.log(`\nFAILED LANES (${failed.length}):`);
   for (const [n, st, why] of failed) console.log(`  ${n}  ${st}${n.startsWith('linkedin') && why ? '  — ' + why : ''}  (see ${PLOG})`);
 }

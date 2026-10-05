@@ -1,17 +1,17 @@
-# career-finder -- 日本語モード (`modes/ja/`)
+# career-finder -- 日本語モード (`.claude/skills/career-finder/modes/ja/`)
 
 このフォルダには、日本市場または日本語で運営される企業での求職活動を行う候補者向けに、career-finder の主要モードを日本語に翻訳したファイルが含まれています。
 
 ## いつこれらのモードを使うか？
 
-以下のいずれかに該当する場合は `modes/ja/` を使用してください：
+以下のいずれかに該当する場合は `.claude/skills/career-finder/modes/ja/` を使用してください：
 
 - 主に**日本語の求人**（Wantedly、Green、doda、リクナビNEXT、ビズリーチ、LinkedIn JP、Indeed JP、Findy など）に応募している
 - **履歴書・職務経歴書の言語**が日本語、または求人に応じて日本語と英語を使い分けている
 - 機械翻訳ではない、**自然な日本語のテック系表現**で書かれた回答やカバーレターが必要
 - **日本市場特有の事項**に対応する必要がある：正社員 vs 業務委託、賞与（ボーナス）、退職金、有給休暇、試用期間、36協定、通勤手当、住宅手当、みなし残業、年俸制など
 
-ほとんどの求人が英語の場合は、デフォルトの `modes/` を使ってください。英語モードでも Claude が日本語の求人を検出すれば自動的に対応しますが、日本市場の細かい慣習までは同じレベルで把握していません。
+ほとんどの求人が英語の場合は、デフォルトの `.claude/skills/career-finder/modes/` を使ってください。英語モードでも Claude が日本語の求人を検出すれば自動的に対応しますが、日本市場の細かい慣習までは同じレベルで把握していません。
 
 ## どうやって有効化する？
 
@@ -21,13 +21,13 @@ career-finder にはコード上の「言語スイッチ」フラグはありま
 
 セッションの冒頭で Claude にこう伝えます：
 
-> 「`modes/ja/` の日本語モードを使って。」
+> 「`.claude/skills/career-finder/modes/ja/` の日本語モードを使って。」
 
 または
 
-> 「評価と応募を日本語で。`modes/ja/_shared.md` と `modes/ja/kyujin.md` を読んで。」
+> 「評価と応募を日本語で。`.claude/skills/career-finder/modes/ja/_shared.md` と `.claude/skills/career-finder/modes/ja/kyujin.md` を読んで。」
 
-Claude は `modes/` の代わりにこのフォルダのファイルを読み込みます。
+Claude は `.claude/skills/career-finder/modes/` の代わりにこのフォルダのファイルを読み込みます。
 
 ### 方法 2 -- プロファイルで恒久設定
 
@@ -36,7 +36,7 @@ Claude は `modes/` の代わりにこのフォルダのファイルを読み込
 ```yaml
 language:
   primary: ja
-  modes_dir: modes/ja
+  modes_dir: ja
 ```
 
 最初のセッションで Claude にこのフィールドを尊重するよう伝えてください（「`profile.yml` を見て、`language.modes_dir` を設定してある」）。以降、Claude は自動的に日本語モードを使用します。
@@ -49,10 +49,10 @@ language:
 
 | ファイル | 翻訳元 | 用途 |
 |---------|-------|------|
-| `_shared.md` | `modes/_shared.md` (EN) | 共通コンテキスト、アーキタイプ、グローバルルール、日本市場の特記事項 |
-| `kyujin.md` | `modes/oferta.md` (ES) | 求人の完全評価（A-F ブロック） |
-| `oubo.md` | `modes/apply.md` (EN) | 応募フォーム記入のライブアシスタント |
-| `pipeline.md` | `modes/pipeline.md` (ES) | URL のインボックス / 求人の Second Brain |
+| `_shared.md` | `.claude/skills/career-finder/modes/_shared.md` (EN) | 共通コンテキスト、アーキタイプ、グローバルルール、日本市場の特記事項 |
+| `kyujin.md` | `.claude/skills/career-finder/modes/oferta.md` (ES) | 求人の完全評価（A-F ブロック） |
+| `oubo.md` | `.claude/skills/career-finder/modes/apply.md` (EN) | 応募フォーム記入のライブアシスタント |
+| `pipeline.md` | `.claude/skills/career-finder/modes/pipeline.md` (ES) | URL のインボックス / 求人の Second Brain |
 
 残りのモード（`scan`、`batch`、`pdf`、`tracker`、`auto-pipeline`、`deep`、`contacto`、`ofertas`、`project`、`training`）は意図的にこの PR に含めていません。これらは主にツール配管、パス、設定コマンドで構成されており、言語非依存であるべきだからです。
 

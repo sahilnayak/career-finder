@@ -9,7 +9,7 @@
  * automatically when the spec has no inline `bullets`. No browser needed — runs in
  * the headless cron path (same `claude -p` the speed loop already uses for scoring).
  *
- * Truthfulness: synthesize/recombine real cv.md + _profile.md experience and state
+ * Truthfulness: synthesize/recombine real cv.md + config/narrative.md experience and state
  * reasonable, defensible inferences (adjacent skills) — but invent NO fake metrics,
  * employers, or tools (rule set 2026-06-15).
  *
@@ -21,6 +21,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { requireTargets } from './targets.mjs';
+import { resolveNarrative } from './lib/paths.mjs';
 
 const PROFILE = requireTargets();
 const PRIMARY = PROFILE.targets.primary_role || PROFILE.targets.roles[0];
@@ -37,7 +38,8 @@ const OUT = args.out || `data/bullets/${slug}.json`;
 mkdirSync('data/bullets', { recursive: true });
 
 const cv = existsSync('cv.md') ? readFileSync('cv.md', 'utf-8') : '';
-const profile = existsSync('modes/_profile.md') ? readFileSync('modes/_profile.md', 'utf-8') : '';
+const NARRATIVE = resolveNarrative();
+const profile = NARRATIVE ? readFileSync(NARRATIVE, 'utf-8') : '';
 
 const jdRef = args['jd-text']
   ? `JOB DESCRIPTION (text):\n${args['jd-text']}`

@@ -122,7 +122,7 @@ time **(J)**."
 
 ## How to run this
 
-1. Read `cv.md`, `article-digest.md`, `config/profile.yml`, `modes/_profile.md`, and the
+1. Read `cv.md`, `article-digest.md`, `config/profile.yml`, `config/narrative.md`, and the
    evaluation report in `reports/` if one exists for this company.
 2. Research the company for the specific detail: engineering blog, launches, docs, product.
    Use the `browser-automation` skill for anything bot-walled. Cite what you found.

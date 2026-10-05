@@ -16,7 +16,7 @@ This file is a regression fixture for the text normalization pass added in `scri
 
 ## Writing quality guidelines (writer must follow these)
 
-The normalizer does NOT fix writing style. These are enforced by the rules in `modes/_shared.md` and should never appear in generated CV text in the first place.
+The normalizer does NOT fix writing style. These are enforced by the rules in `.claude/skills/career-finder/modes/_shared.md` and should never appear in generated CV text in the first place.
 
 - "passionate about machine learning"
 - "results-oriented professional with a proven track record"

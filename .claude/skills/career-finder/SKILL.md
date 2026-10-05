@@ -10,10 +10,15 @@ argument-hint: "[scan | scan-web | scan-index | discover | orchestrator | speed 
 
 ## Setup gate
 
-Before any mode: if `cv.md`, `config/profile.yml`, `modes/_profile.md` or `portals.yml` is missing,
+Before any mode: if `cv.md`, `config/profile.yml`, `config/narrative.md` or `portals.yml` is missing,
 or `node scripts/targets.mjs` reports "run onboarding first", stop and run the
 `career-finder-onboarding` skill. Every mode reads the user's target roles, location policy and
 thresholds from `config/profile.yml`; never assume a role family, metro or score bar.
+An older install may still have the narrative at `modes/_profile.md`: read it from there if
+`config/narrative.md` is absent, and run `node scripts/doctor.mjs` to migrate it.
+
+Mode files are bundled with this skill under `.claude/skills/career-finder/modes/`. Always use
+that full repo-relative path (subagents and cron run from the repo root).
 
 ## Mode Routing
 
@@ -56,7 +61,7 @@ Lane modes: **daily** is ON by default (`scripts/schedule.mjs install`; launchd 
 
 **Delegated skills (not sub-commands):**
 - A single interview question to answer or rehearse ("why this company", "tell me about yourself") → the `interview-answers` skill.
-- Non-English postings, or `language.modes_dir` set in `config/profile.yml` → the `career-finder-language-modes` skill; load mode files from that directory instead of `modes/`.
+- Non-English postings, or `language.modes_dir` set in `config/profile.yml` → the `career-finder-language-modes` skill; load mode files from `.claude/skills/career-finder/modes/{modes_dir}/` (strip a legacy `modes/` prefix from the value) instead of `.claude/skills/career-finder/modes/`, using that skill's translated-filename mapping; modes with no translation fall back to the English file.
 
 **Auto-pipeline detection:** If `{{mode}}` is not a known sub-command AND contains JD text (keywords: "responsibilities", "requirements", "qualifications", "about the role", "we're looking for", company name + role) or a URL to a JD, execute `auto-pipeline`.
 
@@ -113,22 +118,22 @@ Or paste a JD directly to run the full pipeline.
 After determining the mode, load the necessary files before executing:
 
 ### Modes that require `_shared.md` + their mode file:
-Read `modes/_shared.md` + `modes/{mode}.md`
+Read `.claude/skills/career-finder/modes/_shared.md` + `.claude/skills/career-finder/modes/{mode}.md`
 
 Applies to: `auto-pipeline`, `offer`, `offers`, `pdf`, `contact`, `outreach`, `apply`, `pipeline`, `scan`, `scan-web`, `scan-index`, `discover`, `orchestrator`, `speed`, `batch`
 
 ### Standalone modes (only their mode file):
-Read `modes/{mode}.md`
+Read `.claude/skills/career-finder/modes/{mode}.md`
 
 Applies to: `tracker`, `deep`, `training`, `project`, `patterns`, `followup`, `dashboard`, `qualifiers`, `scored`, `catalog`, `feedback`, `interview-prep`
 
 ### Modes delegated to subagent:
-For `scan` and `pipeline` (3+ URLs): launch as Agent with the content of `_shared.md` + `modes/{mode}.md` injected into the subagent prompt.
+For `scan` and `pipeline` (3+ URLs): launch as Agent with the content of `.claude/skills/career-finder/modes/_shared.md` + `.claude/skills/career-finder/modes/{mode}.md` injected into the subagent prompt.
 
 ```
 Agent(
   subagent_type="general-purpose",
-  prompt="[content of modes/_shared.md]\n\n[content of modes/{mode}.md]\n\n[invocation-specific data]",
+  prompt="[content of .claude/skills/career-finder/modes/_shared.md]\n\n[content of .claude/skills/career-finder/modes/{mode}.md]\n\n[invocation-specific data]",
   description="career-finder {mode}"
 )
 ```

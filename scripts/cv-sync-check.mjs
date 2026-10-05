@@ -13,6 +13,7 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { SHARED_MD } from './lib/paths.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = dirname(__dirname);
@@ -48,7 +49,7 @@ if (!existsSync(profilePath)) {
 
 // 3. Check for hardcoded metrics in prompt files
 const filesToCheck = [
-  { path: join(projectRoot, 'modes', '_shared.md'), name: '_shared.md' },
+  { path: join(projectRoot, SHARED_MD), name: '_shared.md' },
   { path: join(projectRoot, 'batch', 'batch-prompt.md'), name: 'batch-prompt.md' },
 ];
 

@@ -190,4 +190,4 @@ compensation:
   location_flexibility: "Hybrid up to 3 days in office"
 
 # language:
-#   modes_dir: modes/de     # only for non-English job searches
+#   modes_dir: de     # only for non-English job searches (bare code; legacy "modes/de" still works)

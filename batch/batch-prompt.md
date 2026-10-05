@@ -18,7 +18,7 @@ PDFs and comp research are generated on-demand via `/career-finder pdf` and `/ca
 | cv.md | `cv.md (project root)` | ALWAYS |
 | llms.txt | `llms.txt (if exists)` | ALWAYS |
 | config/profile.yml | `config/profile.yml` | ALWAYS (targets, location, pipeline.qualify_score) |
-| modes/_profile.md | `modes/_profile.md` | ALWAYS (archetypes, narrative) |
+| config/narrative.md | `config/narrative.md` | ALWAYS (archetypes, narrative) |
 
 **RULE: NEVER write to cv.md.** They are read-only.
 **RULE: NEVER hardcode metrics.** Read them from cv.md at evaluation time.
@@ -53,7 +53,7 @@ Read `cv.md`. Execute ALL blocks:
 
 #### Step 0 — Archetype Detection
 
-Read the candidate's archetypes from `config/profile.yml` (`targets.roles`, `targets.primary_role`, and the `target_roles` / archetypes block) and `modes/_profile.md`. Classify the offer into one of those archetypes. If it is a hybrid, indicate the 2 closest. If it matches none of them, say so: that is an off-target role and caps the score.
+Read the candidate's archetypes from `config/profile.yml` (`targets.roles`, `targets.primary_role`, and the `target_roles` / archetypes block) and `config/narrative.md`. Classify the offer into one of those archetypes. If it is a hybrid, indicate the 2 closest. If it matches none of them, say so: that is an off-target role and caps the score.
 
 **Adaptive framing:** for the detected archetype, emphasize what that kind of hiring manager is buying, using proof points read from `cv.md`. The framing changes; the truth is the same.
 
@@ -67,7 +67,7 @@ Table with: Detected archetype, Domain, Function, Seniority, Remote, Team size, 
 
 Read `cv.md`. Table mapping each JD requirement to exact CV lines.
 
-**Adapted to the archetype:** order the mapping by what the JD prioritizes for that archetype (per `modes/_profile.md`).
+**Adapted to the archetype:** order the mapping by what the JD prioritizes for that archetype (per `config/narrative.md`).
 
 **Gaps** section with a mitigation strategy for each:
 1. Is it a hard blocker or nice-to-have?

@@ -54,9 +54,9 @@ the JD; no hedge words; the user could act within 5 minutes without re-reading a
 3. **Score only from the canonical JD** (the ATS digest or the `data/jds/` snapshot), never from a
    title or snippet. Every fit claim and gap quotes a line from the digest.
 4. **Never invent experience, metrics, employers or people.** Facts come from `cv.md` and
-   `modes/_profile.md` only. If the JD asks for something the CV does not show, it is a gap.
+   `config/narrative.md` only. If the JD asks for something the CV does not show, it is a gap.
 5. **Do not read TSVs or big files directly.** Read `shortlist.json`, `contacts-*.json`, `cv.md`,
-   `modes/_profile.md`, and a `data/jds/` snapshot only for a near-miss.
+   `config/narrative.md`, and a `data/jds/` snapshot only for a near-miss.
 6. **Never comment on employment gaps** in any output.
 
 ## The clock (soft stop 9:30)
@@ -96,8 +96,8 @@ is not a quiet board.
 
 ## Stage 2: Score (all fresh/widened roles in ONE pass)
 
-Score 1.0-5.0, one decimal. Source of truth: `modes/_profile.md`, `modes/_shared.md`,
-`modes/offer.md`; this is the compact version.
+Score 1.0-5.0, one decimal. Source of truth: `config/narrative.md`, `.claude/skills/career-finder/modes/_shared.md`,
+`.claude/skills/career-finder/modes/offer.md`; this is the compact version.
 
 **Candidate facts:** read `cv.md` once and write yourself a 6-line fact sheet (roles, years per
 function, top metrics, skills, education, authorization). Use only those facts.
@@ -111,7 +111,7 @@ function, top metrics, skills, education, authorization). Use only those facts.
 - Any title hit by a `title_negatives` entry is off-target.
 
 **Dimensions.** CV match and archetype fit carry the score; culture/stage and red flags adjust it.
-Comp affects the score only if `modes/_profile.md` says so.
+Comp affects the score only if `config/narrative.md` says so.
 
 **Hard-gate checklist** (run before any score >= QS; an unmet gate caps at QS - 0.1 and names it):
 language fluency, clearance/citizenship, a mandatory licence or certification they lack, a named

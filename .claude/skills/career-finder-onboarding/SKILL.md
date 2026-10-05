@@ -1,6 +1,6 @@
 ---
 name: career-finder-onboarding
-description: First-run setup for career-finder. Takes the user's resume (PDF, DOCX or pasted text), converts it to cv.md, infers their function, seniority and 2-4 target roles, confirms them with the user, then writes config/profile.yml, modes/_profile.md and portals.yml, seeds the company index for their role and metro, and finishes with a dry run of the morning pipeline. Use when cv.md, config/profile.yml, modes/_profile.md or portals.yml is missing, when `targets.roles` is empty, when any script prints "run onboarding first", or when the user says "set me up", "here is my resume" or "change my target roles".
+description: First-run setup for career-finder. Takes the user's resume (PDF, DOCX or pasted text), converts it to cv.md, infers their function, seniority and 2-4 target roles, confirms them with the user, then writes config/profile.yml, config/narrative.md and portals.yml, seeds the company index for their role and metro, and finishes with a dry run of the morning pipeline. Use when cv.md, config/profile.yml, config/narrative.md or portals.yml is missing, when `targets.roles` is empty, when any script prints "run onboarding first", or when the user says "set me up", "here is my resume" or "change my target roles".
 user_invocable: true
 ---
 
@@ -15,7 +15,7 @@ pipeline that confidently searches for the wrong job, so take the time here.
 
 ```bash
 mkdir -p data config output reports
-ls cv.md config/profile.yml modes/_profile.md portals.yml 2>&1; node scripts/targets.mjs 2>&1 | head -30
+ls cv.md config/profile.yml config/narrative.md portals.yml 2>&1; [ -f modes/_profile.md ] && echo legacy-narrative-present; node scripts/targets.mjs 2>&1 | head -30
 ```
 
 - All four exist and `targets.mjs` prints resolved blocks: setup is done. Only re-run the steps the
@@ -23,7 +23,7 @@ ls cv.md config/profile.yml modes/_profile.md portals.yml 2>&1; node scripts/tar
 - Anything missing, or `targets.mjs` says "run onboarding first": run the whole flow below, in order.
   Do NOT run evaluations, scans or any other mode until step 9 passes.
 
-Never overwrite an existing `cv.md`, `config/profile.yml`, `modes/_profile.md` or `portals.yml`
+Never overwrite an existing `cv.md`, `config/profile.yml`, `config/narrative.md` or `portals.yml`
 without showing the user what changes and getting a yes.
 
 ## 1. Ingest the resume -> `cv.md`
@@ -91,7 +91,7 @@ Read `cv.md` and work out, with the evidence line for each:
    until NEW candidates > 0 or the drop sample holds only genuinely-wrong jobs.
 6. **Archetypes**: 2-4 named flavors of the target work (e.g. for a nurse: "ICU / critical care",
    "outpatient clinic", "clinical educator"), each with the CV evidence that supports it. These
-   become `target_roles` in the profile and drive the archetype detection in `modes/_shared.md`.
+   become `target_roles` in the profile and drive the archetype detection in `.claude/skills/career-finder/modes/_shared.md`.
 7. **Proof points**: the 5-8 strongest achievements, each with its metric exactly as the CV states
    it. Flag the ones with no number; those are weaker in scoring and outreach.
 8. **Skills and certifications** that employers in this field gate on (licences, clearances,
@@ -125,7 +125,7 @@ Ask (AskUserQuestion where the answer is a choice, free text otherwise):
   Tell them how to copy it; leave empty if they skip. Without it the LinkedIn lane cannot hard-filter
   by geography.
 - **Compensation floor and target**, currency. Recorded for reports; comp is not a scoring factor
-  unless the user says it should be (then write that rule into `modes/_profile.md`).
+  unless the user says it should be (then write that rule into `config/narrative.md`).
 - **Work authorization / sponsorship** need.
 - **Timezone**: IANA name for their home base (e.g. `America/Chicago`) -> `location.timezone`.
   Used for the morning-run clock and posting-age math.
@@ -135,7 +135,7 @@ Ask (AskUserQuestion where the answer is a choice, free text otherwise):
   (default true only when a target role itself contains manager/director/lead/head).
 - **Dealbreakers**: industries or company words they will not work in (e.g. "defense", "gambling",
   "tobacco") -> `targets.dealbreakers` (list; case-insensitive substring match on company + title).
-  Non-keyword dealbreakers (on-call, travel, company size) go in `modes/_profile.md`.
+  Non-keyword dealbreakers (on-call, travel, company size) go in `config/narrative.md`.
 - **Never-apply list**: employers they will not apply to (current employer, past employers, others).
   Write one per line to `data/_never-apply.txt`, starting with this header:
   ```
@@ -204,13 +204,15 @@ Judge by the exit code, not the printed text: the first must exit 0, the second 
 (exit 2 means the profile is not set up), and the remote case must exit 0 only if their
 `remote_policy` allows remote. If anything is off, fix the keywords/negatives/cities and re-run.
 
-## 6. Write `modes/_profile.md`
+## 6. Write `config/narrative.md`
 
-Copy `modes/_profile.template.md` if it does not exist, then fill it with: the archetypes and how
+If an older install left the narrative at `modes/_profile.md`, run `node scripts/doctor.mjs` to
+move it here instead of rewriting it. Otherwise copy
+`.claude/skills/career-finder/modes/_profile.template.md` to `config/narrative.md` if it does not exist, then fill it with: the archetypes and how
 to recognise each in a JD, the framing/narrative per archetype, proof points (with metrics), the
 location policy in words, dealbreakers, any scoring adjustments the user asked for, and the
 "never say" list (things they do not want claimed). Everything user-specific goes here or in
-`config/profile.yml`, never in `modes/_shared.md`.
+`config/profile.yml`, never in `.claude/skills/career-finder/modes/_shared.md`.
 
 ## 7. Write `portals.yml` with role-appropriate seed companies
 
@@ -349,7 +351,7 @@ Then finish with:
 ## After onboarding: keep learning
 
 When the user corrects a score ("I would never take this", "you missed that I know X"), write the
-lesson into `modes/_profile.md` or `config/profile.yml` (targets, negatives, dealbreakers). A
+lesson into `config/narrative.md` or `config/profile.yml` (targets, negatives, dealbreakers). A
 workflow change the user asks for is a standing rule: persist it, do not apply it once.
 
 ## Ethics (always)

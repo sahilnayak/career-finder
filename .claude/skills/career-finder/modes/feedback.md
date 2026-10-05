@@ -9,7 +9,7 @@ the search gets smarter from real results (not just coverage).
 - **Sync + report:** `node scripts/feedback-outcomes.mjs` — adds new qualifiers as `pending`, prints
   response-rate by title-family / score-band / source.
 - **Bank a learning:** `node scripts/feedback-outcomes.mjs --learn` — once ≥5 decided outcomes exist, prepends a
-  data-driven learning to `modes/scan-web.md` (e.g. "archetype A 67% vs archetype B 0% → prioritize A"), which the scorer reads.
+  data-driven learning to `.claude/skills/career-finder/modes/scan-web.md` (e.g. "archetype A 67% vs archetype B 0% → prioritize A"), which the scorer reads.
 - **Record an outcome:** `node scripts/record-outcome.mjs <company|url> <applied|responded|interview|offer|rejected|skipped>`.
 
 ## Store

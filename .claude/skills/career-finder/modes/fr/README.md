@@ -1,17 +1,17 @@
-# career-finder -- Modes francophones (`modes/fr/`)
+# career-finder -- Modes francophones (`.claude/skills/career-finder/modes/fr/`)
 
 Ce dossier contient les traductions francaises des principaux modes career-finder pour les candidats qui ciblent le marche francophone (France, Belgique, Suisse romande, Luxembourg, Quebec).
 
 ## Quand utiliser ces modes ?
 
-Utilise `modes/fr/` si au moins une de ces conditions est remplie :
+Utilise `.claude/skills/career-finder/modes/fr/` si au moins une de ces conditions est remplie :
 
 - Tu postules principalement a des **offres d'emploi en francais** (Welcome to the Jungle, Indeed FR, APEC, Pole emploi / France Travail, LinkedIn FR, sites carrieres)
 - Ton **CV est en francais** ou tu alternes entre FR et EN selon l'offre
 - Tu as besoin de reponses et lettres de motivation en **francais tech naturel**, pas traduit par une machine
 - Tu dois gerer des **specificites contractuelles francophones** : convention collective, RTT, mutuelle, prevoyance, 13e mois, periode d'essai, preavis, cheques-dejeuner, interessement/participation
 
-Si la plupart de tes offres sont en anglais, reste sur les modes standard dans `modes/`. Les modes anglais fonctionnent pour les offres francophones, mais ne connaissent pas les specificites du marche francophone en detail.
+Si la plupart de tes offres sont en anglais, reste sur les modes standard dans `.claude/skills/career-finder/modes/`. Les modes anglais fonctionnent pour les offres francophones, mais ne connaissent pas les specificites du marche francophone en detail.
 
 ## Comment activer ?
 
@@ -19,9 +19,9 @@ Si la plupart de tes offres sont en anglais, reste sur les modes standard dans `
 
 Dis a Claude en debut de session :
 
-> "Utilise les modes francais sous `modes/fr/`."
+> "Utilise les modes francais sous `.claude/skills/career-finder/modes/fr/`."
 
-Claude lira alors les fichiers de ce dossier au lieu de `modes/`.
+Claude lira alors les fichiers de ce dossier au lieu de `.claude/skills/career-finder/modes/`.
 
 ### Option 2 -- En permanence
 
@@ -30,7 +30,7 @@ Ajoute dans `config/profile.yml` :
 ```yaml
 language:
   primary: fr
-  modes_dir: modes/fr
+  modes_dir: fr
 ```
 
 Rappelle-le a Claude lors de ta premiere session ("Regarde dans `profile.yml`, j'ai configure `language.modes_dir`"). Claude utilisera automatiquement les modes francais.
@@ -41,10 +41,10 @@ Cette premiere iteration couvre les quatre modes a plus fort impact :
 
 | Fichier | Traduit depuis | Role |
 |---------|----------------|------|
-| `_shared.md` | `modes/_shared.md` (EN) | Contexte partage, archetypes, regles globales, specificites marche francophone |
-| `offre.md` | `modes/oferta.md` (ES) | Evaluation complete d'une offre (Blocs A-F) |
-| `postuler.md` | `modes/apply.md` (EN) | Assistant live pour remplir les formulaires de candidature |
-| `pipeline.md` | `modes/pipeline.md` (ES) | Inbox d'URLs / Second Brain pour les offres collectees |
+| `_shared.md` | `.claude/skills/career-finder/modes/_shared.md` (EN) | Contexte partage, archetypes, regles globales, specificites marche francophone |
+| `offre.md` | `.claude/skills/career-finder/modes/oferta.md` (ES) | Evaluation complete d'une offre (Blocs A-F) |
+| `postuler.md` | `.claude/skills/career-finder/modes/apply.md` (EN) | Assistant live pour remplir les formulaires de candidature |
+| `pipeline.md` | `.claude/skills/career-finder/modes/pipeline.md` (ES) | Inbox d'URLs / Second Brain pour les offres collectees |
 
 Les autres modes (`scan`, `batch`, `pdf`, `tracker`, `auto-pipeline`, `deep`, `contacto`, `ofertas`, `project`, `training`) restent en EN/ES. Leur contenu est surtout du tooling, des chemins et des commandes -- il doit rester independant de la langue.
 

@@ -36,7 +36,7 @@ PRs without a corresponding issue may be closed if they don't align with the pro
 **Bigger contributions:**
 - New evaluation dimensions or scoring logic
 - Dashboard TUI features (in `dashboard/`)
-- New skill modes (in `modes/`)
+- New skill modes (in `.claude/skills/career-finder/modes/`)
 - Script improvements (`.mjs` utilities)
 
 ## Guidelines

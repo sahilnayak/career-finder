@@ -10,7 +10,8 @@ These files contain your personal data, customizations, and work product. Update
 |------|---------|
 | `cv.md` | Your CV in markdown |
 | `config/profile.yml` | Your identity, `targets`, `location`, `pipeline` thresholds, `outreach` sender + bullets, comp range |
-| `modes/_profile.md` | Your archetypes, narrative, negotiation scripts |
+| `config/narrative.md` | Your archetypes, narrative, negotiation scripts (older installs: `modes/_profile.md`, migrated by `doctor.mjs`) |
+| `data/scan-web-learnings.md` | Search learnings banked by scan-web, `feedback-outcomes.mjs --learn` and `speed-metrics.mjs` |
 | `article-digest.md` | Your proof points from portfolio |
 | `interview-prep/story-bank.md` | Your accumulated STAR+R stories |
 | `portals.yml` | Your customized company list |
@@ -29,9 +30,10 @@ These files contain system logic, scripts, templates, and instructions that impr
 
 | File | Purpose |
 |------|---------|
-| `modes/*.md` | All mode instructions (offer, pdf, scan, batch, apply, outreach, speed, discover, orchestrator, scan-web, scan-index, catalog, feedback, qualifiers, scored, dashboard, interview-prep, etc.) **EXCEPT `modes/_profile.md`**, which is USER-layer (see above) |
-| `modes/_shared.md` | Scoring system, global rules, tools |
-| `modes/{de,fr,ja,pt,ru}/*` | Language-specific modes |
+| `.claude/skills/career-finder/modes/*.md` | All mode instructions (offer, pdf, scan, batch, apply, outreach, speed, discover, orchestrator, scan-web, scan-index, catalog, feedback, qualifiers, scored, dashboard, interview-prep, etc.) |
+| `.claude/skills/career-finder/modes/_shared.md` | Scoring system, global rules, tools |
+| `.claude/skills/career-finder/modes/_profile.template.md` | Template onboarding copies to `config/narrative.md` |
+| `.claude/skills/career-finder/modes/{de,fr,ja}/*` | Language-specific modes |
 | `CLAUDE.md` | Agent instructions |
 | `AGENTS.md` | Codex instructions |
 | `scripts/*.mjs` | Utility scripts (tracked) |

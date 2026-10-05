@@ -1,17 +1,17 @@
-# career-finder — Deutsche Modi (`modes/de/`)
+# career-finder — Deutsche Modi (`.claude/skills/career-finder/modes/de/`)
 
 Dieser Ordner enthält die deutschen Übersetzungen der wichtigsten career-finder-Modi für Bewerber:innen, die im DACH-Raum (Deutschland, Österreich, Schweiz) suchen oder mit deutschen Stellenanzeigen arbeiten.
 
 ## Wann diese Modi nutzen?
 
-Verwende `modes/de/`, wenn mindestens eine der folgenden Bedingungen zutrifft:
+Verwende `.claude/skills/career-finder/modes/de/`, wenn mindestens eine der folgenden Bedingungen zutrifft:
 
 - Du bewirbst dich vor allem auf **deutschsprachige Stellenanzeigen** (StepStone, XING, kununu, Bundesagentur für Arbeit, deutsche Karriereseiten)
 - Deine **Lebenslauf-Sprache** ist Deutsch oder du wechselst je nach Stellenanzeige zwischen DE und EN
 - Du brauchst Antworten und Anschreiben in **natürlichem Tech-Deutsch**, nicht maschinenübersetzt
 - Du musst mit **DACH-spezifischen Vertragselementen** umgehen: 13. Monatsgehalt, Probezeit, Kündigungsfrist, AGG, Tarifvertrag, Festanstellung vs. Freelance, VWL, bAV, Arbeitszeugnisse
 
-Wenn die meisten deiner Stellenanzeigen auf Englisch sind, bleib bei den Standard-Modi unter `modes/`. Die englischen Modi greifen automatisch zu deutschen Anzeigen, sobald Claude sie als deutschsprachig erkennt — aber sie kennen die DACH-Marktbesonderheiten nicht im selben Detail.
+Wenn die meisten deiner Stellenanzeigen auf Englisch sind, bleib bei den Standard-Modi unter `.claude/skills/career-finder/modes/`. Die englischen Modi greifen automatisch zu deutschen Anzeigen, sobald Claude sie als deutschsprachig erkennt — aber sie kennen die DACH-Marktbesonderheiten nicht im selben Detail.
 
 ## Wie aktivieren?
 
@@ -21,13 +21,13 @@ career-finder hat keinen "Sprach-Schalter" als Code-Flag. Stattdessen gibt es zw
 
 Sag Claude zu Beginn der Session ausdrücklich:
 
-> "Nutze ab jetzt die deutschen Modi unter `modes/de/`."
+> "Nutze ab jetzt die deutschen Modi unter `.claude/skills/career-finder/modes/de/`."
 
 oder
 
-> "Bewerten und Bewerbungen auf Deutsch — verwende `modes/de/_shared.md` und `modes/de/angebot.md`."
+> "Bewerten und Bewerbungen auf Deutsch — verwende `.claude/skills/career-finder/modes/de/_shared.md` und `.claude/skills/career-finder/modes/de/angebot.md`."
 
-Claude liest dann die Dateien aus diesem Ordner statt aus `modes/`.
+Claude liest dann die Dateien aus diesem Ordner statt aus `.claude/skills/career-finder/modes/`.
 
 ### Weg 2 — Dauerhaft, per Profil
 
@@ -36,7 +36,7 @@ Trage in `config/profile.yml` eine Sprach-Präferenz ein, z. B.:
 ```yaml
 language:
   primary: de
-  modes_dir: modes/de
+  modes_dir: de
 ```
 
 Erinnere Claude in deiner ersten Session daran, dieses Feld zu respektieren ("Schau in `profile.yml`, ich habe `language.modes_dir` gesetzt"). Ab dann nimmt Claude automatisch die deutschen Modi.
@@ -49,10 +49,10 @@ Diese erste Iteration deckt die vier Modi mit dem höchsten Hebel ab:
 
 | Datei | Übersetzt aus | Zweck |
 |-------|---------------|-------|
-| `_shared.md` | `modes/_shared.md` (EN) | Geteilter Kontext, Archetypen, globale Regeln, DACH-Markt-Spezifika |
-| `angebot.md` | `modes/oferta.md` (ES) | Vollständige Bewertung einer einzelnen Stellenanzeige (Blöcke A-F) |
-| `bewerben.md` | `modes/apply.md` (EN) | Live-Assistent fürs Bewerbungsformular |
-| `pipeline.md` | `modes/pipeline.md` (ES) | URL-Inbox / Second Brain für gesammelte Stellenanzeigen |
+| `_shared.md` | `.claude/skills/career-finder/modes/_shared.md` (EN) | Geteilter Kontext, Archetypen, globale Regeln, DACH-Markt-Spezifika |
+| `angebot.md` | `.claude/skills/career-finder/modes/oferta.md` (ES) | Vollständige Bewertung einer einzelnen Stellenanzeige (Blöcke A-F) |
+| `bewerben.md` | `.claude/skills/career-finder/modes/apply.md` (EN) | Live-Assistent fürs Bewerbungsformular |
+| `pipeline.md` | `.claude/skills/career-finder/modes/pipeline.md` (ES) | URL-Inbox / Second Brain für gesammelte Stellenanzeigen |
 
 Die übrigen Modi (`scan`, `batch`, `pdf`, `tracker`, `auto-pipeline`, `deep`, `contacto`, `ofertas`, `project`, `training`) sind absichtlich nicht in diesem PR dabei. Sie funktionieren weiter über die EN/ES-Originale, weil ihr Inhalt zu großen Teilen aus Tooling, Pfaden und Konfigurationskommandos besteht — diese sollen sprachunabhängig bleiben.
 

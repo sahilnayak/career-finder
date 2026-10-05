@@ -47,4 +47,4 @@ discovered during `scan-web` browser combs.
 A job at or above `pipeline.qualify_score` is **eligible** for outreach, not owed. Do not draft outreach
 from this mode, interactive or headless. The user picks jobs with `w` on the dashboard or
 `node scripts/outreach-queue.mjs add`; drafting stays draft-only and sending is always the user's call.
-`node scripts/outreach-owed.mjs` is a read-only "awaiting" view. Policy: `modes/_profile.md` -> "Outreach on qualify".
+`node scripts/outreach-owed.mjs` is a read-only "awaiting" view. Policy: `config/narrative.md` -> "Outreach on qualify".

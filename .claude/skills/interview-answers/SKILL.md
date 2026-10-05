@@ -34,7 +34,7 @@ neither; create them the first time the user saves an answer or a story.
 ## Shared rules
 
 **Ground every claim.** Facts come from `cv.md`, `article-digest.md`, `config/profile.yml`,
-`modes/_profile.md`, and `interview-prep/story-bank.md`. Never invent a project, hobby,
+`config/narrative.md`, and `interview-prep/story-bank.md`. Never invent a project, hobby,
 metric, or opinion. If a slot in a framework needs a personal detail you cannot source, ask
 the user one direct question rather than filling it with something plausible.
 

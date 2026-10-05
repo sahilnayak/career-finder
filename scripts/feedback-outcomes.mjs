@@ -7,17 +7,18 @@
  *      data/qualifier-outcomes.tsv as `pending` (this store persists past the 24h prune).
  *   2. ANALYZE: response-rate by title-family / score-band / source over DECIDED rows.
  *   3. --learn: if >=5 decided outcomes, prepend a dated, data-driven learning to
- *      modes/scan-web.md so future scoring/pre-filter uses real conversion signal.
+ *      data/scan-web-learnings.md so future scoring/pre-filter uses real conversion signal.
  *
  * Usage:  node scripts/feedback-outcomes.mjs [--learn]
  */
 
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'fs';
+import { ensureLearnings } from './lib/paths.mjs';
 import { requireTargets, loadTargets, isPrimaryRole } from './targets.mjs';
 
 requireTargets();
 
-const QUAL = 'data/qualifiers.tsv', OUT = 'data/qualifier-outcomes.tsv', LEARN = 'modes/scan-web.md';
+const QUAL = 'data/qualifiers.tsv', OUT = 'data/qualifier-outcomes.tsv', LEARN = ensureLearnings();
 const HEADER = 'url\tcompany\trole\tscore\tsource\toutcome\tupdated';
 const POSITIVE = new Set(['responded', 'interview', 'offer']);
 const DECIDED = new Set(['responded', 'interview', 'offer', 'rejected']);

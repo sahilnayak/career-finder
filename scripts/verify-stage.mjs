@@ -7,13 +7,13 @@
  * score-inflation. It runs AFTER the free deterministic gates (outreach-judge,
  * assertCvContract, reconcile, daily-quota), not instead of them.
  *
- * MODEL POLICY (modes/_profile.md, user-set 2026-06-28): verification/judging agents
+ * MODEL POLICY (config/narrative.md, user-set 2026-06-28): verification/judging agents
  * use **Sonnet 4.6** by default ($3/$15 per 1M — ~40% cheaper than Opus, reliable enough
  * to judge). NEVER Opus for routine verification. This INTENTIONALLY overrides the global
  * "always Opus" instruction for verification agents ONLY — generation/scoring agents are
  * unaffected. Haiku is available behind --model haiku for purely mechanical checks, but the
  * global "never Haiku" rule means it stays opt-in. Distinct from the OPT-IN 6-Opus review
- * team (that stays the only Opus verification, triggered manually — see _profile.md).
+ * team (that stays the only Opus verification, triggered manually — see config/narrative.md).
  *
  * USAGE:
  *   node scripts/verify-stage.mjs --stage <score|outreach|resume|report> \
@@ -28,6 +28,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, basename } from 'node:path';
 import { requireTargets, areaLabel } from './targets.mjs';
+import { resolveNarrative } from './lib/paths.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const STAGES = ['score', 'outreach', 'resume', 'report'];
@@ -84,7 +85,8 @@ if (!artifact) {
   process.exit(2);
 }
 const cv = readMaybe('cv.md', 8000);
-const profile = readMaybe('modes/_profile.md', 6000);
+const NARRATIVE = resolveNarrative();
+const profile = NARRATIVE ? readMaybe(NARRATIVE, 6000) : '';
 const jd = jdArg ? (/^https?:\/\//.test(jdArg) ? `JD URL: ${jdArg}` : readMaybe(jdArg, 12000)) : '';
 
 // ---- stage rubrics ----
@@ -124,7 +126,7 @@ const prompt = [
   `RUBRIC:\n${RUBRICS[stage]}`,
   ``,
   `CANDIDATE (cv.md — the ONLY source of truth for claims):\n${cv}`,
-  profile ? `\nTARGETING RULES (modes/_profile.md, excerpt):\n${profile}` : '',
+  profile ? `\nTARGETING RULES (${NARRATIVE}, excerpt):\n${profile}` : '',
   jd ? `\nJOB DESCRIPTION:\n${jd}` : '',
   ``,
   `ARTIFACT UNDER REVIEW (${stage}):\n${artifact}`,

@@ -44,7 +44,7 @@ in-session via `/loop`, and on a schedule only when opted in (`--with-speed`). A
    the two ledgers in sync) → `feedback-outcomes.mjs` → show via `qualifiers-view` (newest first). A new ≥ qualify_score is
    **eligible** for outreach, not owed: do not draft from this mode. The user picks with `w` on the dashboard or
    `node scripts/outreach-queue.mjs add`; `node scripts/outreach-owed.mjs` is a read-only "awaiting" view.
-   Policy: `modes/_profile.md` → "Outreach on qualify".
+   Policy: `config/narrative.md` → "Outreach on qualify".
 
 ## Cadence (opt-in)
 - **Scheduled speed runs are OFF by default.** Opt in with `node scripts/schedule.mjs install --with-speed N`
@@ -56,10 +56,10 @@ in-session via `/loop`, and on a schedule only when opted in (`--with-speed`). A
 - **In-session `/loop` (interactive only, browser-capable):** the same cycle plus the browser supplement and,
   for each new qualifier, report + tracker TSV + merge-tracker + resume PDF. Dedup against
   `scored-jobs.tsv`/`qualifiers.tsv` makes overlap with scheduled runs harmless.
-- **Morning quota:** the daily run enforces `pipeline.daily_quota` (see `modes/_profile.md` → "Morning quota").
+- **Morning quota:** the daily run enforces `pipeline.daily_quota` (see `config/narrative.md` → "Morning quota").
 
 On every new ≥ qualify_score in an interactive cycle: **full evaluation report (Blocks A–G per
-`modes/offer.md`, numbered, in `reports/`) + tracker TSV + merge-tracker + resume PDF**. The one-line `why` in
+`.claude/skills/career-finder/modes/offer.md`, numbered, in `reports/`) + tracker TSV + merge-tracker + resume PDF**. The one-line `why` in
 `scored-jobs.tsv` is triage, not the evaluation — **the report IS the evaluation**; a qualifier without a report
 is incomplete (dashboard `⏎` drill-in opens the report via `applications.md`).
 
@@ -70,7 +70,7 @@ read this file and key off `found_at`), then run `reconcile-qualifiers.mjs` so `
 the canonical scored ledger, and
 log the cycle — `node scripts/speed-metrics.mjs <ats_found> <browser_found> <scored> <qualified> <note>`.
 Periodically `node scripts/speed-metrics.mjs --analyze` learns WHICH hours (local time) actually produce fresh ≥ qualify_score
-posts and banks a learning to `modes/scan-web.md`, so the loop tightens cadence in productive windows and idles
+posts and banks a learning to `.claude/skills/career-finder/modes/scan-web.md`, so the loop tightens cadence in productive windows and idles
 otherwise. Also reuse the scan-web pre-filter learnings (drop Director/Head, Java/ML, hardware/intern) before scoring.
 
 ## Config

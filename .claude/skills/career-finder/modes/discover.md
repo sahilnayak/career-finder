@@ -16,7 +16,7 @@ pipeline scans + scores them. **Hybrid:** zero-token core (autonomous) + browser
 - **Browser top-up** (this mode, local): drive playwright-stealth / chrome-devtools over LinkedIn company search,
   hiring.cafe, VC portfolio pages → append `company\tcareers_url` to `data/_discovered-companies.tsv`.
 - **Scoring** (LLM): read `data/_candidates.tsv`, score each with the `offer` rubric (≥ qualify_score) using
-  `cv.md`+`modes/_profile.md`, append qualifiers to `data/qualifiers.tsv`, regenerate `data/qualifiers.md`.
+  `cv.md`+`config/narrative.md`, append qualifiers to `data/qualifiers.tsv`, regenerate `data/qualifiers.md`.
 
 ## Recurring + escalation loop (strict 24h)
 Two layers:
@@ -47,7 +47,7 @@ Per pass:
    not qualifiers — finding 2026-06-16) → `prune-qualifiers.mjs` → `reconcile-qualifiers.mjs` (drop snippet false
    positives < qualify_score canonically, backfill orphan `found_at`) → `feedback-outcomes.mjs --learn`.
 4. **If 0 NEW qualifiers → UPDATE THE PROCESS and re-launch** (this is "keep adding to the process till jobs found"):
-   - bank a learning to `modes/scan-web.md` (what each slice yielded vs noise),
+   - bank a learning to `.claude/skills/career-finder/modes/scan-web.md` (what each slice yielded vs noise),
    - change the next pass's approach: **pass 2** widen titles (`targets.title_keywords` adjacent to the roles) + more VC lists; **pass 3** adjacent ATS (SmartRecruiters/Workable) + niche boards
      (role-specific boards for the target career, hiring.cafe deep); **pass 4–5** only-if-still-empty widen window 48→72h (those finds reported
      separately, NOT written to the strict-24h `qualifiers.tsv`).
@@ -71,7 +71,7 @@ the index grows every run ("keep adding to it").
 A job at or above `pipeline.qualify_score` is **eligible** for outreach, not owed. Do not draft outreach
 from this mode, interactive or headless. The user picks jobs with `w` on the dashboard or
 `node scripts/outreach-queue.mjs add`; drafting stays draft-only and sending is always the user's call.
-`node scripts/outreach-owed.mjs` is a read-only "awaiting" view. Policy: `modes/_profile.md` -> "Outreach on qualify".
+`node scripts/outreach-owed.mjs` is a read-only "awaiting" view. Policy: `config/narrative.md` -> "Outreach on qualify".
 
 ## Headless
 

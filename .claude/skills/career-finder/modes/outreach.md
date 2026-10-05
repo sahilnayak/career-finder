@@ -225,11 +225,11 @@ Commands: `node scripts/find-email.mjs --name "First Last" --domain co.com [--pa
    - If JD is a URL: navigate with Chrome DevTools MCP (`mcp__chrome-devtools__new_page` then `take_snapshot`). Pull company name, role title, and any signal worth dropping into an observation (new product, team-growth/hiring blurb, mission). Do NOT use funding/raise/investor signals — see the money ban in `ban_compliance`.
    - If JD is text: parse company + role from the text.
 3. **Locate the evaluation report.** Look for `reports/{NNN}-{company-slug}-*.md`. If found, load Block B (CV match), Block C (level/strategy), Block F (STAR proof points), and Block G (legitimacy / timing signals). These are the source of truth for the bullets.
-   - If absent: fall back to `cv.md` + `config/profile.yml` (`narrative`, `superpowers`, `proof_points`) + `modes/_profile.md`. Tell the user the bullets will be weaker without a report and offer to run `/career-finder offer` first.
+   - If absent: fall back to `cv.md` + `config/profile.yml` (`narrative`, `superpowers`, `proof_points`) + `config/narrative.md`. Tell the user the bullets will be weaker without a report and offer to run `/career-finder offer` first.
 4. **Load shared context once** (so every subagent gets the same facts):
    - `cv.md`
    - `config/profile.yml` (candidate, narrative, superpowers, proof_points sections)
-   - `modes/_profile.md` (bridge identities, archetype framing)
+   - `config/narrative.md` (bridge identities, archetype framing)
    - The evaluation report (full text) if present
    - The TEMPLATES block from this mode file
    - The strict style rules above
@@ -401,7 +401,7 @@ These are deliberate v2+ ideas, not v1 behavior. Surface them when the user asks
 2. **Persona-level template evolution.** When 10+ sends in a persona accumulate, propose template tweaks ("HM emails with hiring-post observations get 3.2× the reply rate; default to that source when a hiring post exists").
 3. **Char-count + ban linter as a script.** `scripts/lint-outreach.mjs <draft.txt>` that validates against the strict rules pre-send. Fast feedback when the user hand-tweaks a draft.
 4. **LinkedIn snapshot cache.** Cache scraped LinkedIn profiles for 7 days under `data/linkedin-cache/{slug}.json` so re-runs do not re-hit the browser. Invalidate when the URL is reprovided with a `--fresh` flag.
-5. **Multi-language mirrors.** When the user is targeting `modes/de`, `modes/fr`, or `modes/ja`, mirror this mode in those folders with native templates and DACH/Francophone/Japan-specific subject conventions.
+5. **Multi-language mirrors.** When the user is targeting `.claude/skills/career-finder/modes/de`, `.claude/skills/career-finder/modes/fr`, or `.claude/skills/career-finder/modes/ja`, mirror this mode in those folders with native templates and DACH/Francophone/Japan-specific subject conventions.
 6. **A/B at the company level.** When the user is sending to two similar roles at different companies, auto-pick gold for one and silver for the other. Log which version got the response.
 7. **Chained follow-ups.** If `data/outreach-log.tsv` shows no response in N days, integrate with `scripts/followup-cadence.mjs` to generate the next-touch draft (different angle, shorter, no repeat of prior bullets).
 8. **Recipient warmth scoring.** Pull mutual-count + recent-activity from the LinkedIn snapshot. Score each persona "cold/warm/hot" and adjust the opener tone accordingly. Hot recipients can skip the personalized observation and go straight to the ask.

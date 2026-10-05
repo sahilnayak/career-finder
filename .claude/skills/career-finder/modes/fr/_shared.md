@@ -30,7 +30,7 @@ Le skill traite TOUS les roles cibles avec le meme soin. Aucun n'est primaire ou
 
 | Archetype | Axes thematiques | Ce que l'entreprise achete |
 |-----------|------------------|----------------------------|
-| {archetypes from modes/_profile.md -- filled by onboarding from the candidate's resume; never use a built-in list} | | |
+| {archetypes from config/narrative.md -- filled by onboarding from the candidate's resume; never use a built-in list} | | |
 
 <!-- [PERSONNALISER] Adapte les archetypes ci-dessus a tes roles cibles.
      Exemple pour le backend engineering :
@@ -45,7 +45,7 @@ Le skill traite TOUS les roles cibles avec le meme soin. Aucun n'est primaire ou
 
 | Si le role est... | Mettre en avant chez le candidat... | Sources de proof points |
 |-------------------|-------------------------------------|-------------------------|
-| {archetypes from modes/_profile.md} | | |
+| {archetypes from config/narrative.md} | | |
 
 <!-- [PERSONNALISER] Associe tes projets/articles concrets aux archetypes ci-dessus -->
 

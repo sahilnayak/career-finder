@@ -6,7 +6,7 @@ Daily is on by default. Speed (`--with-speed`, 2-4 runs a day) and hot (`--with-
 default 60) are opt-in.
 
 Each row maps a career-ops step to the `morning.mjs` lane that replaces it and the mode file
-(`modes/*.md`) that lane follows. Steps with no replacement say why they were dropped.
+(`.claude/skills/career-finder/modes/*.md`) that lane follows. Steps with no replacement say why they were dropped.
 `scripts/test-pipeline-wiring.mjs` checks the wiring statically. The router table in
 `.claude/skills/career-finder/SKILL.md` is where modes map to lanes.
 
