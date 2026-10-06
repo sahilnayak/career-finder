@@ -27,7 +27,14 @@ switch (cmd) {
   case 'check':
     console.log(JSON.stringify({ status: 'up-to-date', local, remote: local, note: 'career-finder does not pull upstream updates' }));
     break;
-  case 'apply':
+  case 'apply': {
+    // The one thing apply does: restore the bundled starter company index, offline, if the live
+    // index is missing or header-only. Never touches an index that already has rows.
+    const { ensureSeedIndex } = await import('./lib/index-tsv.mjs');
+    const r = ensureSeedIndex();
+    console.log(r.restored ? `Restored the bundled starter company index (${r.rows} boards).` : 'career-finder is a standalone fork: there is no upstream to apply. Nothing changed.');
+    break;
+  }
   case 'rollback':
     console.log(`career-finder is a standalone fork: there is no upstream to ${cmd}. Nothing changed.`);
     break;

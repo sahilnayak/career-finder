@@ -1,0 +1,8 @@
+company	hq	careers_url	ats_type	ats_api_url	source	date_added	last_scanned	last_status
+Alpha		https://jobs.ashbyhq.com/alpha	ashby	https://api.ashbyhq.com/posting-api/job-board/alpha?includeCompensation=true	scan-history	2026-01-01	2026-10-06	12 jobs / 3 kept
+Beta Dead		https://boards.greenhouse.io/beta	greenhouse	https://boards-api.greenhouse.io/v1/boards/beta/jobs	seed	2026-01-01	2026-10-06	error: HTTP 404
+Gamma		https://jobs.lever.co/gamma	lever	https://api.lever.co/v0/postings/gamma	seed	2026-01-01	2026-10-06	4 jobs / 0 kept
+Gamma Dup		https://jobs.lever.co/gamma	lever	https://api.lever.co/v0/postings/gamma/	seed	2026-01-01	2026-10-06	4 jobs / 0 kept
+Delta		https://jobs.ashbyhq.com/delta	ashby	https://api.ashbyhq.com/posting-api/job-board/delta	seed	2026-01-01	2026-10-06	2 jobs / 0 kept
+Echo Browser		https://careers.echo.example/jobs			seed	2026-01-01		
+Foxtrot Moved		https://jobs.ashbyhq.com/foxtrot	ashby	https://api.ashbyhq.com/posting-api/job-board/foxtrot	seed	2026-01-01	2026-10-06	migrated to workday

@@ -14,6 +14,13 @@
  * For each candidate it derives the board careers_url and runs detectApi() to
  * record the ATS type + zero-token API URL so scan-index.mjs can sweep it.
  *
+ * Import mode (seeding from another career-ops / career-finder index):
+ *   node scripts/build-company-index.mjs --import <other-company-index.tsv> [--into <path>]
+ *        [--scrub] [--source <label>] [--dry-run]
+ * Rows are keyed on ats_api_url (fallback careers_url). Rows whose last_status says 404/gone/dead/
+ * migrated are skipped, a live local row is never overwritten, and --scrub resets last_scanned and
+ * last_status (the bundled starter ships with --scrub --source starter). Needs no profile.
+ *
  * Usage:  node scripts/build-company-index.mjs [--dry-run]
  */
 
@@ -21,7 +28,15 @@ import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
 import yaml from 'js-yaml';
 import { detectApi } from './scan-core.mjs';
 import { detectFamily } from './probe-ats-core.mjs';
+
+const USAGE = `Usage:
+  node scripts/build-company-index.mjs [--dry-run]
+      Append boards derived from data/scan-history.tsv, portals.yml and profile discovery.seed_companies.
+      A fresh clone already ships the starter index (run \`npm run doctor\` to confirm); you rarely need this.
+  node scripts/build-company-index.mjs --import <other-company-index.tsv> [--into <path>] [--scrub] [--source <label>] [--dry-run]
+  --help, -h   print this and exit (writes nothing)`;
 import { requireTargets } from './targets.mjs';
+import { parseTsv, mergeImport, toLine, INDEX_COLS, INDEX_HEADER } from './lib/index-tsv.mjs';
 
 const INDEX_PATH = 'data/company-index.tsv';
 const SCAN_HISTORY_PATH = 'data/scan-history.tsv';
@@ -104,7 +119,30 @@ function collectFromScanHistory() {
   return out;
 }
 
+function argVal(flag) { const i = process.argv.indexOf(flag); return i > -1 ? process.argv[i + 1] : null; }
+
+function importMode() {
+  const from = argVal('--import');
+  if (!from || !existsSync(from)) { console.error(`--import: file not found: ${from}`); process.exit(1); }
+  const into = argVal('--into') || INDEX_PATH;
+  const local = existsSync(into) ? parseTsv(readFileSync(into, 'utf-8')).rows : [];
+  const incoming = parseTsv(readFileSync(from, 'utf-8')).rows;
+  const scrub = process.argv.includes('--scrub');
+  const { rows, stats } = mergeImport(local, incoming, { scrub, source: argVal('--source') || (scrub ? 'starter' : 'import'), today: TODAY });
+  console.log(`Import ${from}: ${incoming.length} rows | added ${stats.added} | revived ${stats.revived} | skipped dead ${stats.skippedDead}, duplicate ${stats.skippedDuplicate}, live-local ${stats.skippedLiveLocal}, no-key ${stats.skippedNoKey}`);
+  if (process.argv.includes('--dry-run')) { console.log('(dry run — nothing written)'); return; }
+  writeFileSync(into, INDEX_HEADER + rows.map(r => toLine(r, INDEX_COLS)).join('\n') + (rows.length ? '\n' : ''), 'utf-8');
+  console.log(`Wrote ${rows.length} rows → ${into}`);
+}
+
+const KNOWN_FLAGS = new Set(['--import', '--into', '--scrub', '--source', '--dry-run', '--help', '-h']);
 function main() {
+  const argv = process.argv.slice(2);
+  if (argv.includes('--help') || argv.includes('-h')) { console.log(USAGE); return; }
+  // Reject unknown flags BEFORE any read-for-write: a typo (or `--hlep`) must not append seed rows.
+  const unknown = argv.filter(a => a.startsWith('-') && !KNOWN_FLAGS.has(a));
+  if (unknown.length) { console.error(`Unknown flag(s): ${unknown.join(' ')}\n\n${USAGE}`); process.exit(2); }
+  if (process.argv.includes('--import')) return importMode();
   const profile = requireTargets();
   const dryRun = process.argv.includes('--dry-run');
   const existing = loadExisting();

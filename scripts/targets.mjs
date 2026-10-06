@@ -50,7 +50,7 @@ export class TargetsMissingError extends Error {
 const DEFAULTS = Object.freeze({
   targets: {
     roles: [], title_keywords: [], title_negatives: [], primary_role: '', seniority: '',
-    include_management: null, dealbreakers: [],
+    include_management: null, dealbreakers: [], synonyms: {},
   },
   location: {
     metro: '', city: '', state: '', country: '', lat: null, lng: null, radius_mi: 50,
@@ -96,7 +96,11 @@ export function loadTargets({ fresh = false } = {}) {
   const t = { ...DEFAULTS.targets, ...(raw.targets || {}) };
   t.roles = arr(t.roles);
   t.title_keywords = arr(t.title_keywords);
-  t.title_negatives = arr(t.title_negatives);
+  // `negatives` is an accepted alias of `title_negatives`. Neither has a built-in default: a
+  // role-agnostic profile carries NO director/vp/head-of gate unless the user (or targets.seniority)
+  // asks for one.
+  t.title_negatives = [...new Set([...arr(t.title_negatives), ...arr(raw.targets?.negatives)])];
+  t.synonyms = normSynonyms(t.synonyms);
   t.primary_role = String(t.primary_role || t.roles[0] || '').trim();
   t.seniority = String(t.seniority || '').trim();
   if (!t.roles.length) throw new TargetsMissingError();
@@ -146,6 +150,68 @@ export function requireTargets(exitCode = 1) {
   }
 }
 
+
+// ── Role synonyms and seniority tracks ─────────────────────────────────────────────────────
+
+/**
+ * Built-in synonyms for common careers, keyed by the role's head phrase (level words stripped).
+ * targets.synonyms in config/profile.yml REPLACES the built-in list for the roles it names, and
+ * adds lists for roles that have none. A synonym is a title that means the same job; it is
+ * matched, never searched for (searchKeywords() stays the configured roles).
+ */
+export const BUILTIN_SYNONYMS = Object.freeze({
+  'software engineer': ['Member of Technical Staff', 'SWE', 'Software Developer', 'Software Development Engineer', 'SDE'],
+  'data engineer': ['Analytics Engineer', 'Data Infrastructure Engineer', 'Data Platform Engineer'],
+  'sales engineer': ['Solutions Engineer', 'Solution Engineer', 'Pre-Sales Engineer', 'Presales Engineer'],
+  'registered nurse': ['RN', 'Staff Nurse', 'Clinical Nurse', 'Nurse II', 'Nurse III'],
+  'financial analyst': ['Finance Analyst', 'FP&A Analyst', 'Financial Planning & Analysis'],
+  'sales development representative': ['SDR', 'BDR', 'Business Development Representative', 'Account Development Representative'],
+  'customer success manager': ['CSM', 'Client Success Manager'],
+  'product designer': ['UX Designer', 'UI/UX Designer', 'Interaction Designer'],
+});
+
+const LEVEL_WORDS = /\b(senior|sr|staff|principal|junior|jr|lead|mid|entry|associate)\b\.?/gi;
+const roleKey = r => String(r || '').toLowerCase().replace(LEVEL_WORDS, ' ').replace(/\s+/g, ' ').trim();
+
+function normSynonyms(v) {
+  const out = {};
+  if (v && typeof v === 'object' && !Array.isArray(v)) for (const [k, list] of Object.entries(v)) out[roleKey(k)] = arr(list);
+  return out;
+}
+
+/** Synonyms for ONE role phrase: the configured list when present, else the built-in one. */
+export function synonymsFor(role) {
+  const t = loadTargets().targets;
+  const k = roleKey(role);
+  return k in t.synonyms ? t.synonyms[k] : (BUILTIN_SYNONYMS[k] || []);
+}
+
+/** Synonyms of the primary role, minus any the user listed as a separate role (that is a distinct target). */
+function primarySynonyms(t) {
+  const own = new Set(t.roles.map(r => r.toLowerCase()));
+  return synonymsFor(t.primary_role).filter(x => !own.has(x.toLowerCase()));
+}
+
+/** Every configured role plus its synonyms (deduped, original casing kept). */
+function roleSynonymSet(roles) {
+  return [...new Set(roles.flatMap(r => synonymsFor(r)))];
+}
+
+/**
+ * Hard seniority negatives implied by targets.seniority. Only an explicit TRACK opts in:
+ *   ic | individual-contributor -> no director / vp / head of / chief titles
+ *   manager                     -> no vp / head of / chief titles
+ * Level words ("mid", "senior", "staff") imply nothing, so the default gate is empty.
+ */
+export const SENIORITY_TRACKS = Object.freeze({
+  ic: ['director', 'vp', 'vice president', 'head of', 'chief'],
+  'individual-contributor': ['director', 'vp', 'vice president', 'head of', 'chief'],
+  manager: ['vp', 'vice president', 'head of', 'chief'],
+});
+function seniorityNegatives(t) {
+  return SENIORITY_TRACKS[String(t.seniority || '').toLowerCase().trim()] || [];
+}
+
 // ── Regex building ─────────────────────────────────────────────────────────────────────────
 
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -167,16 +233,16 @@ function compiled() {
   const p = loadTargets();
   if (p.__compiled) return p.__compiled;
   const t = p.targets;
-  const hard = t.title_negatives.filter(n => n.startsWith('!')).map(n => n.slice(1));
+  const hard = [...t.title_negatives.filter(n => n.startsWith('!')).map(n => n.slice(1)), ...seniorityNegatives(t)];
   const soft = t.title_negatives.filter(n => !n.startsWith('!'));
   const c = {
-    positive: anyOf([...t.roles, ...t.title_keywords]),
-    roles: anyOf(t.roles),
+    positive: anyOf([...t.roles, ...roleSynonymSet(t.roles), ...t.title_keywords]),
+    roles: anyOf([...t.roles, ...roleSynonymSet(t.roles)]),
     entryRoles: t.roles.filter(r => ENTRY_LEVEL.test(` ${r}`)),
     dealbreaker: anyOf(t.dealbreakers),
     soft: anyOf(soft),
     hard: anyOf(hard),
-    primary: anyOf([t.primary_role]),
+    primary: anyOf([t.primary_role, ...primarySynonyms(t)]),
     local: anyOf(localKeys(p.location)),
   };
   Object.defineProperty(p, '__compiled', { value: c, enumerable: false });
@@ -212,9 +278,28 @@ const anyVariant = (re, title) => titleVariants(title).some(v => re.test(v));
 // sit in different segments, three words apart) unless title_keywords include "data platform".
 const tok = s => String(s || '').toLowerCase().replace(/[^a-z0-9+#]+/g, ' ').trim().split(/\s+/).filter(Boolean);
 const tokEq = (a, b) => a === b || (a.length > 3 && (a === b + 's' || b === a + 's'));
-function phraseTokensMatch(phraseStr, title) {
+const MGMT_LADDER = new Set(['manager', 'director', 'head', 'lead', 'vp']);
+function phraseTokensMatch(phraseStr, title, { ladder = true } = {}) {
   const want = tok(phraseStr);
   if (!want.length) return false;
+  if (phraseTokensMatchCore(want, title)) return true;
+  if (!ladder) return false;
+  // "Marketing Manager" is the people-leader rung of a function: Director of / Head of / VP / Lead
+  // titles in the same function (one segment, function words contiguous) are the same family.
+  // targets.seniority (e.g. ic) still drops them through its hard negatives, so this never
+  // overrides an explicit seniority choice.
+  if (want.length >= 2 && want[want.length - 1] === 'manager') {
+    const fn = want.slice(0, -1);
+    const segs = String(title || '').split(/[,|()\[\]:;]|\s[-–—\/]\s/);
+    for (const seg of segs) {
+      const have = tok(seg);
+      if (!have.some(h => MGMT_LADDER.has(h)) && !titleVariants(title).some(v => tok(v).some(h => MGMT_LADDER.has(h)))) continue;
+      for (let i = 0; i + fn.length <= have.length; i++) if (fn.every((w, k) => tokEq(have[i + k], w))) return true;
+    }
+  }
+  return false;
+}
+function phraseTokensMatchCore(want, title) {
   const segs = String(title || '').split(/[,|()\[\]:;]|\s[-–—\/]\s/);
   for (const seg of segs) {
     const have = tok(seg);
@@ -236,9 +321,12 @@ function phraseTokensMatch(phraseStr, title) {
   return false;
 }
 /** True when any phrase in the list matches the title (regex first, then token-set). */
-function phrasesMatch(list, re, title) {
-  return anyVariant(re, title) || list.some(p => phraseTokensMatch(p, title));
+function phrasesMatch(list, re, title, opts) {
+  return anyVariant(re, title) || list.some(p => phraseTokensMatch(p, title, opts));
 }
+
+const roleList = () => { const t = loadTargets().targets; return [...t.roles, ...roleSynonymSet(t.roles)]; };
+const positiveList = () => [...roleList(), ...loadTargets().targets.title_keywords];
 
 /** Remove management words from a string (for re-testing a negative without them). */
 const stripMgmt = s => s.replace(new RegExp(MGMT_WORDS.source, 'gi'), ' ');
@@ -248,14 +336,14 @@ export function titleDropped(title) {
   const s = String(title || '');
   const p = loadTargets();
   const c = compiled();
-  const isRole = phrasesMatch(p.targets.roles, c.roles, s);
+  const isRole = phrasesMatch(roleList(), c.roles, s, { ladder: false });
   // Management titles survive when the user wants management, or when the title IS a target role.
   const mgmtOk = p.targets.include_management || isRole;
   const hit = re => titleVariants(s).some(v => re.test(mgmtOk ? stripMgmt(v) : v));
   if (hit(c.hard)) return true;
   if (entryLevelDropped(s)) return true;
   if (!hit(c.soft)) return false;
-  return !phrasesMatch([...p.targets.roles, ...p.targets.title_keywords], c.positive, s);
+  return !phrasesMatch(positiveList(), c.positive, s);
 }
 
 /** Entry-level title for an experienced candidate (years >= 3), unless a target role is entry-level. */
@@ -271,13 +359,37 @@ function entryLevelDropped(s) {
 export function titleMatches(title) {
   const s = String(title || '');
   const t = loadTargets().targets;
-  return phrasesMatch([...t.roles, ...t.title_keywords], compiled().positive, s) && !titleDropped(s);
+  return phrasesMatch(positiveList(), compiled().positive, s) && !titleDropped(s);
 }
 
 /** True when the title is the user's primary role (the one the primary_quota counts). */
 export function isPrimaryRole(title) {
   const t = loadTargets().targets;
-  return phrasesMatch(t.primary_role ? [t.primary_role] : [], compiled().primary, String(title || '')) && !titleDropped(title);
+  return phrasesMatch(t.primary_role ? [t.primary_role, ...primarySynonyms(t)] : [], compiled().primary, String(title || '')) && !titleDropped(title);
+}
+
+/**
+ * Which rule decided this title? Mirrors titleDropped()/titleMatches() but names the phrase, so
+ * `targets.mjs --test` can answer "why was this kept or dropped". decision: keep | drop.
+ */
+export function explainTitle(title) {
+  const s = String(title || '');
+  const p = loadTargets();
+  const t = p.targets;
+  const c = compiled();
+  const isRole = phrasesMatch(roleList(), c.roles, s, { ladder: false });
+  const mgmtOk = t.include_management || isRole;
+  const test = ph => titleVariants(s).some(v => anyOf([ph]).test(mgmtOk ? stripMgmt(v) : v));
+  const hardList = [...t.title_negatives.filter(n => n.startsWith('!')).map(n => n.slice(1)), ...seniorityNegatives(t)];
+  const hard = hardList.find(test);
+  if (hard) return { decision: 'drop', rule: `hard negative "!${hard}"${seniorityNegatives(t).includes(hard) ? ` (from targets.seniority=${t.seniority})` : ''}` };
+  if (entryLevelDropped(s)) return { decision: 'drop', rule: 'entry-level title for an experienced candidate (candidate.years >= 3)' };
+  const matched = [...t.roles.map(r => ['role', r]), ...t.roles.flatMap(r => synonymsFor(r).map(x => ['synonym of "' + r + '"', x])),
+    ...t.title_keywords.map(k => ['title_keyword', k])].find(([, ph]) => phrasesMatch([ph], anyOf([ph]), s));
+  const soft = t.title_negatives.filter(n => !n.startsWith('!')).find(test);
+  if (soft && !matched) return { decision: 'drop', rule: `soft negative "${soft}" with no positive match` };
+  if (!matched) return { decision: 'drop', rule: 'no role, synonym or keyword matches the title' };
+  return { decision: 'keep', rule: `${matched[0]} "${matched[1]}"${soft ? ` (soft negative "${soft}" neutralized)` : ''}` };
 }
 
 /** The first dealbreaker word found in company + title (case-insensitive substring), or null. */
@@ -410,25 +522,99 @@ function namesOtherUsState(s) {
   return codes.length > 0 && !codes.includes(mine);
 }
 
-export function locationMatches(locStr, title = '') {
-  const s = String(locStr || '');
-  const parts = s.split(/\s*[;|]\s*|\s+or\s+/i).filter(Boolean);
-  if (parts.length > 1) {
-    // onsite/hybrid: a Remote segment makes the posting ambiguous ("Houston; Remote"). Keep it only
-    // when a LOCAL segment explicitly says onsite/hybrid.
-    const { remote_policy } = loadTargets().location;
-    if ((remote_policy === 'onsite' || remote_policy === 'hybrid') && parts.some(p => classifyLocation(p) === 'remote')) {
-      return parts.some(p => compiled().local.test(p.toLowerCase()) && /\b(hybrid|on[\s-]?site|in[\s-]office)\b/i.test(p) && !REMOTE_WORDS.test(p));
-    }
-    // Otherwise a multi-location string ("Chicago, IL; Remote (US)") passes if ANY segment passes.
-    // The whole string rides along as context so "Dubai | Remote job" cannot pass on the bare
-    // "Remote job" segment once the split has separated it from its country.
-    return parts.some(p => locationMatches(p, `${title} ${s}`));
+const STATE_WORDS = new Set(Object.values(US_STATES));
+const COUNTRY_TOKENS = new Set(['us', 'usa', 'u.s.', 'u.s.a.', 'united states', 'united states of america', 'america',
+  ...Object.values(COUNTRY_ALIASES).flat(), ...COUNTRIES]);
+
+/** A comma token that completes the previous place ("CA", "California", "US", "Germany"), not a new one. */
+function isPlaceSuffix(tok, prev = '') {
+  const t = tok.toLowerCase().replace(/\s*\(.*\)\s*$/, '').trim();
+  if (/^[a-z]{2}$/i.test(tok.trim()) && US_STATES[t]) return true;
+  if (STATE_WORDS.has(t)) {
+    // A state NAME completes a city ("Santa Clara, California") but only once: a second suffix, or a
+    // name that is also a big city ("San Francisco, New York"), starts a new place.
+    if (/,/.test(prev)) return false;
+    return t !== 'new york' || prev.toLowerCase() === 'new york';
   }
-  const c = classifyLocation(s);
-  if (c === 'local') return !namesOtherUsState(s);
-  if (c === 'remote') return remoteAllowed(s, title);
-  return false;
+  return COUNTRY_TOKENS.has(t);
+}
+
+/**
+ * Split a multi-location string into its places. Separators: "|", ";", "/", " or ", and commas that
+ * separate CITIES ("San Francisco, New York, Seattle"). A comma that only adds a state or country
+ * ("San Francisco, CA, US") stays inside its place. "Remote in the US" survives as one place.
+ */
+export function splitLocations(s) {
+  const out = [];
+  for (const chunk of String(s || '').split(/\s*[|;\/]\s*|\s+or\s+/i)) {
+    const toks = chunk.split(/\s*,\s*/).filter(Boolean);
+    let cur = null;
+    for (const tok of toks) {
+      if (cur && isPlaceSuffix(tok, cur)) cur += `, ${tok}`;
+      else { if (cur) out.push(cur); cur = tok; }
+    }
+    if (cur) out.push(cur);
+  }
+  return out.map(x => x.trim()).filter(Boolean);
+}
+
+/** Does this place name the configured area? City alias "SF" counts when San Francisco is local. */
+function placeIsLocal(p) {
+  const lower = p.toLowerCase();
+  if (compiled().local.test(lower)) return true;
+  return /\bSF\b/.test(p) && compiled().local.test('san francisco');
+}
+
+/** Names a country other than the configured one ("Dublin, Ireland" must not match Dublin, CA). */
+function namesForeignCountry(p) {
+  const mine = new Set(countryAliases(loadTargets().location.country || 'united states'));
+  const foreign = COUNTRIES.filter(x => !mine.has(x));
+  return foreign.length > 0 && anyOf(foreign).test(p);
+}
+
+/**
+ * The location gate with its reasoning. `offices` are extra places the ATS exposes (Ashby
+ * secondaryLocations, Greenhouse offices[]). A posting passes when ANY place is inside the
+ * configured area; otherwise when a remote place is allowed by location.remote_policy.
+ * `flag` is non-empty when the row passed on something a human should double-check:
+ *   multi-location | also-remote | remote-in-metro | via-offices | remote-us
+ * `rule` names what decided, for `targets.mjs --test`.
+ */
+export function locationVerdict(locStr, title = '', offices = []) {
+  const whole = String(locStr || '');
+  const offs = (offices || []).map(String).filter(o => o && o !== whole);
+  const parts = splitLocations(whole);
+  const offParts = offs.flatMap(splitLocations).filter(o => !parts.includes(o));
+  const multi = parts.length + offParts.length > 1 || /\(\s*\+\s*\d+/.test(whole);
+  const { remote_policy } = loadTargets().location;
+  const localOk = p => placeIsLocal(p) && !namesOtherUsState(p) && !namesForeignCountry(p);
+  const ctx = `${title} ${[whole, ...offs].join(' ')}`;
+
+  const hitIn = (list, via) => {
+    const p = list.find(localOk);
+    if (!p) return null;
+    const flags = [];
+    if (via) flags.push('via-offices');
+    if (REMOTE_WORDS.test(p)) flags.push('remote-in-metro');
+    else if ([...parts, ...offParts].some(x => x !== p && classifyLocation(x) === 'remote')) flags.push('also-remote');
+    if (multi && !flags.length) flags.push('multi-location');
+    return { ok: true, flag: flags.join(','), rule: `local place "${p}"${via ? ' (from offices)' : ''}` };
+  };
+  const local = hitIn(parts, false) || hitIn(offParts, true);
+  if (local) return local;
+
+  const remote = [...parts, ...offParts].find(p => classifyLocation(p) === 'remote' && remoteAllowed(p, ctx));
+  if (remote) return { ok: true, flag: 'remote-us', rule: `remote place "${remote}" allowed by remote_policy=${remote_policy}` };
+
+  const hasRemote = [...parts, ...offParts].some(p => classifyLocation(p) === 'remote');
+  const why = !parts.length && !offParts.length ? 'no location'
+    : hasRemote ? `remote place not allowed by remote_policy=${remote_policy}`
+    : 'no place inside the configured area';
+  return { ok: false, flag: '', rule: why };
+}
+
+export function locationMatches(locStr, title = '', offices = []) {
+  return locationVerdict(locStr, title, offices).ok;
 }
 
 /**
@@ -461,7 +647,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const company = ci > -1 ? process.argv[ci + 1] || '' : '';
     const v = { title, loc, company, titleMatches: titleMatches(title), titleDropped: titleDropped(title),
       isPrimaryRole: isPrimaryRole(title), location: classifyLocation(loc), locationMatches: locationMatches(loc, title),
-      dealbreaker: dealbreakerHit(company, title) };
+      dealbreaker: dealbreakerHit(company, title),
+      titleRule: explainTitle(title), locationRule: locationVerdict(loc, title) };
     console.log(JSON.stringify(v, null, 2));
     if (!v.titleMatches || !v.locationMatches || v.dealbreaker) process.exitCode = 1;
   } else {

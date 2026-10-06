@@ -10,7 +10,9 @@
  * report what each found plus the request ledger. No claude -p, no logged-in LinkedIn, no :9222.
  *   node scripts/discovery-audit.mjs --live --roles sdr,software-engineer --hours 24 \
  *     [--index data/company-index.tsv] [--roles-file <fixture>/roles.json] [--truth <tsv>] [--pace-s 20] [--keep] [--json] [--out f.json]
- *     [--allow-browser]  let HiringCafe fall back to the debug Chrome on :9222. OFF by default: plain HTTP
+ *     [--manifest <file>]  truth window ({window_start, window_end}); default <truth dir>/manifest.json when present.
+                        Anchors scan-index's window to the truth window instead of "last H hours from now".
+     [--allow-browser]  let HiringCafe fall back to the debug Chrome on :9222. OFF by default: plain HTTP
  *                        is Cloudflare-403'd (measured 2026-10-05: 8/8 403), so without it the HC lane
  *                        reports its 403s in the ledger and finds nothing. Never while LinkedIn owns :9222.
  *   Lanes: scan-index.mjs --hours H, hiringcafe-scan.mjs --no-browser --days ceil(H/24), scan.mjs.
@@ -77,6 +79,37 @@ export function atsJobId(u = '') {
 
 export const normCompany = (s = '') => String(s).toLowerCase().replace(/\b(inc|llc|ltd|corp|corporation|co|technologies|labs?)\b\.?/g, '').replace(/[^a-z0-9]/g, '');
 export const normTitle = (s = '') => String(s).toLowerCase().replace(/[–—-]/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\b(sr)\b/g, 'senior').replace(/\s+/g, ' ').trim();
+
+// ── data dir + window anchoring ─────────────────────────────────────────────────────────
+export const DATA_FILES = ['company-index.tsv', '_candidates-new.tsv', '_candidates.tsv', '_speed-ats.tsv', '_web-roles.tsv', '_hiringcafe.tsv', 'scan-history.tsv'];
+const hasData = (d) => existsSync(d) && DATA_FILES.some(f => existsSync(join(d, f)));
+
+/**
+ * `--data` must point at a directory holding lane output. The --live harness keeps its files in
+ * <dir>/data, and pointing --data at <dir> used to score 0% and bucket every truth row not-in-index
+ * with no complaint. Resolve <dir>/data when that is where the files are; otherwise fail loudly.
+ * @returns {{dir: string, note: string}}  throws Error when neither location has any data file
+ */
+export function resolveDataDir(dir) {
+  const d = resolve(dir);
+  if (hasData(d)) return { dir: d, note: '' };
+  if (hasData(join(d, 'data'))) return { dir: join(d, 'data'), note: `--data ${d} has no data files; using ${join(d, 'data')}` };
+  throw new Error(`no data files in ${d}${existsSync(d) ? '' : ' (directory does not exist)'}; looked for ${DATA_FILES.join(', ')} here and in data/. `
+    + 'A recall score against an empty directory would read 0% and mean nothing.');
+}
+
+/**
+ * Truth window from a fixture manifest ({window_start, window_end}, ISO UTC). The live harness anchors
+ * its scan window to THIS, not to the time the harness happened to start, so a rerun at 13:00 still
+ * measures the 09:00-09:00 window the truth set was built for.
+ */
+export function readManifest(file) {
+  if (!file || !existsSync(file)) return null;
+  const m = JSON.parse(readFileSync(file, 'utf8'));
+  const start = new Date(m.window_start), end = new Date(m.window_end);
+  if (isNaN(start) || isNaN(end) || end <= start) throw new Error(`manifest ${file}: window_start/window_end must be ISO timestamps with end > start`);
+  return { start, end, hours: Math.max(1, Math.ceil((end - start) / 3_600_000)), file, raw: m };
+}
 
 // ── found rows per lane ──────────────────────────────────────────────────────────────────
 /** Every row a lane wrote into `dataDir`, as { lane, company, title, url }. */
@@ -199,7 +232,7 @@ export async function roleProfile(slug, R, hours) {
   const p = yaml.load(readFileSync(join(REPO, 'config/profile.example.yml'), 'utf8'));
   const days = Math.max(1, Math.ceil(hours / 24));
   p.candidate = { ...p.candidate, full_name: 'Test Candidate', email: 'test@example.com', location: 'San Francisco, CA', years: R.years, linkedin: '' };
-  p.targets = { roles: [R.role, ...(R.alt || [])], title_keywords: R.kw || [], title_negatives: ['!director', '!vp', '!head of', '!intern', ...(R.neg || [])],
+  p.targets = { roles: [R.role, ...(R.alt || [])], title_keywords: R.kw || [], title_negatives: ['!intern', ...(R.neg || [])],
     primary_role: R.role, seniority: 'mid', include_management: !!R.mgmt, dealbreakers: [] };
   p.target_roles = { primary: [R.role], archetypes: [{ name: R.role, level: 'Mid', fit: 'primary' }] };
   p.location = { metro: 'San Francisco Bay Area', city: 'San Francisco', state: 'CA', country: 'United States', lat: 37.7749, lng: -122.4194,
@@ -231,7 +264,12 @@ function runRecord({ indexPath, truthPath, args, rolesFile }) {
 
 async function live(args) {
   const { readLedger, aggregate, formatSummary } = await import('./request-ledger.mjs');
-  const hours = Number(args.hours || 24);
+  const manifestFile = args.manifest ? resolve(args.manifest) : (args.truth ? join(dirname(resolve(args.truth)), 'manifest.json') : null);
+  const manifest = readManifest(manifestFile);
+  if (args.manifest && !manifest) { console.error(`--manifest ${args.manifest}: file not found`); process.exit(2); }
+  const hours = Number(args.hours || manifest?.hours || 24);
+  if (manifest && !args.json) console.error(`window anchored to the truth manifest ${manifest.file}: ${manifest.start.toISOString()} .. ${manifest.end.toISOString()} (${manifest.hours}h)`);
+  if (!manifest && args.truth) console.error('NOTE: no manifest.json beside --truth: the window is the last --hours from NOW, not the truth window.');
   const rolesFile = resolve(args['roles-file'] || join(DEFAULT_FIXTURE, 'roles.json'));
   const catalog = JSON.parse(readFileSync(rolesFile, 'utf8'));
   const slugs = String(args.roles || Object.keys(catalog).join(',')).split(',').map(s => s.trim()).filter(Boolean);
@@ -244,7 +282,7 @@ async function live(args) {
   const paceMs = Number(args['pace-s'] ?? 20) * 1000;
   const runStamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
   const report = { started: new Date().toISOString(), weekday: new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Los_Angeles' }),
-    hours, index: indexPath, roles: {},
+    hours, index: indexPath, roles: {}, window: manifest ? { start: manifest.start.toISOString(), end: manifest.end.toISOString(), anchored: true } : { anchored: false },
     // Run record (FINAL-REPORT step 0): enough to tell two runs apart. The career-ops index is copied
     // while its cron edits it, so the row count + hash pin which snapshot this run actually used.
     record: runRecord({ indexPath, truthPath: args.truth ? resolve(args.truth) : null, args, rolesFile }) };
@@ -262,7 +300,9 @@ async function live(args) {
     const env = { ...process.env, CAREER_FINDER_PROFILE: join(dir, 'config/profile.yml'), CAREER_FINDER_RUN_ID: runId,
       CAREER_FINDER_NO_BROWSER: args['allow-browser'] ? '0' : '1', CAREER_FINDER_LI_EVENTS: join(dir, 'data/li-events.tsv'), CAREER_FINDER_LI_DIR: join(dir, 'data/li-usage'),
       CAREER_FINDER_LI_COOLDOWN: join(dir, 'data/LI_COOLDOWN'),
-      CAREER_FINDER_LEDGER: join(dir, 'data/_request-ledger.tsv'), CAREER_FINDER_LEDGER_OFF: '0', CAREER_FINDER_QUIET: '1' };
+      CAREER_FINDER_LEDGER: join(dir, 'data/_request-ledger.tsv'), CAREER_FINDER_LEDGER_OFF: '0', CAREER_FINDER_QUIET: '1',
+      CAREER_FINDER_FIRST_SEEN: join(dir, 'data/_first-seen.tsv'),   // never write the user's real ledger from an audit
+      ...(manifest ? { CAREER_FINDER_WINDOW_START: manifest.start.toISOString(), CAREER_FINDER_WINDOW_END: manifest.end.toISOString() } : {}) };
     const lanes = [
       ['scan-index', ['scripts/scan-index.mjs', '--hours', String(hours)]],
       ['hiringcafe', ['scripts/hiringcafe-scan.mjs', ...(args['allow-browser'] ? [] : ['--no-browser']), '--quiet', '--days', String(Math.max(1, Math.ceil(hours / 24)))]],
@@ -318,7 +358,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   if (args.live) await live(args);
   else {
     if (!args.truth) { console.error('--truth <tsv> is required (or --live). See --help.'); process.exit(2); }
-    const dataDir = resolve(args.data || 'data');
+    let dataDir;
+    try { const r = resolveDataDir(args.data || 'data'); dataDir = r.dir; if (r.note) console.error(`NOTE: ${r.note}`); }
+    catch (e) { console.error(`ERROR: ${e.message}`); process.exit(2); }
     const a = audit(readTsv(resolve(args.truth)), loadFound(dataDir), loadIndex(dataDir), { excludeFlagged: !!args['exclude-flagged'] });
     console.log(args.json ? JSON.stringify(a, null, 2) : formatAudit(a));
   }

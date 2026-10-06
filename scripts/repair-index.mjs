@@ -17,21 +17,35 @@
  * derived from the company name and the existing careers_url, and rewrite the row's
  * ats_type + ats_api_url on the first host that returns a non-empty job list.
  *
+ * BACKOFF (2026-10-06). A row still dead after an attempt is re-checked after 1 week, then 2, then
+ * 4 (every 4 after that); the next-check date lives in data/_repair-schedule.tsv keyed on the board's
+ * API URL (fallback careers URL), so index rewrites do not lose it. `--force` ignores the schedule.
+ * CONTROL. Before trusting a hit, one request to a nonsense slug on the same ATS host: if THAT also
+ * returns jobs, the host 200s for anything (a SPA), the hit proves nothing, and the board stays
+ * unverified (scheduled for another check) instead of being "repaired" onto a wrong board.
+ *
  * Zero LLM tokens. Read-only against the network (HTTP GET of public job-board APIs).
  *
  * Usage:
  *   node scripts/repair-index.mjs            # dry run — report only, writes nothing
  *   node scripts/repair-index.mjs --apply    # rewrite data/company-index.tsv
  *   node scripts/repair-index.mjs --all      # probe every row, not just failing ones
+ *   node scripts/repair-index.mjs --force    # ignore the backoff schedule (re-check all failing rows now)
+ * `npm run repair` is the dry run; the Monday morning run applies it.
  */
 
 import { readFileSync, writeFileSync, existsSync, copyFileSync } from 'fs';
 import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
+import { rowKey } from './lib/index-tsv.mjs';
+import { loadSchedule, saveSchedule, isDue, recordFailure, nonsenseControl } from './lib/repair-schedule.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const INDEX = `${ROOT}data/company-index.tsv`;
 const APPLY = process.argv.includes('--apply');
 const ALL = process.argv.includes('--all');
+const FORCE = process.argv.includes('--force');
+const SCHEDULE = `${ROOT}data/_repair-schedule.tsv`;
+const TODAY = new Date().toISOString().slice(0, 10);
 const LIMIT = (() => { const i = process.argv.indexOf('--limit'); return i > -1 ? Number(process.argv[i + 1]) : Infinity; })();
 
 if (!existsSync(INDEX)) { console.error('no data/company-index.tsv'); process.exit(1); }
@@ -118,11 +132,26 @@ async function probe(url) {
 }
 
 const rows = lines.slice(1).map((l, idx) => ({ idx: idx + 1, raw: l, f: l.split('\t') })).filter(r => r.f[iCo]);
-const targets = (ALL ? rows : rows.filter(r => /error|404|403/i.test(r.f[iStatus] || ''))).slice(0, LIMIT);
+const schedule = loadSchedule(SCHEDULE);
+const keyOf = r => rowKey({ ats_api_url: r.f[iApi], careers_url: r.f[iCareers] });
+const failing = ALL ? rows : rows.filter(r => /error|404|403/i.test(r.f[iStatus] || ''));
+const due = FORCE || ALL ? failing : failing.filter(r => isDue(schedule.get(keyOf(r)), TODAY));
+const targets = due.slice(0, LIMIT);
 
-console.log(`${rows.length} indexed companies · ${targets.length} to probe${ALL ? ' (--all)' : ' (failing only)'}${APPLY ? '' : ' · DRY RUN'}\n`);
+console.log(`${rows.length} indexed companies · ${failing.length} failing · ${failing.length - due.length} deferred by backoff · ${targets.length} to probe${ALL ? ' (--all)' : ''}${APPLY ? '' : ' · DRY RUN'}\n`);
 
-const fixed = [], stillDead = [];
+// One control request per ATS host per run: does a nonsense slug also "have jobs"?
+const controlCache = new Map();
+async function hostIsSpa(p) {
+  if (!controlCache.has(p.type)) {
+    const c = await nonsenseControl(p.url, async u => { const j = await probe(u); return { ok: !!j, count: j ? p.count(j) : 0 }; });
+    controlCache.set(p.type, c.host200sAnything);
+    if (c.host200sAnything) console.log(`  ⚠️  ${p.type}: nonsense slug returned jobs (${c.controlUrl}); hits on this host are unverified`);
+  }
+  return controlCache.get(p.type);
+}
+
+const fixed = [], stillDead = [], spaRejected = [];
 let done = 0;
 for (const r of targets) {
   const company = r.f[iCo];
@@ -133,11 +162,16 @@ for (const r of targets) {
       const url = p.url(s);
       const j = await probe(url);
       const n = j ? p.count(j) : 0;
-      if (n > 0) { hit = { type: p.type, url, slug: s, n }; break outer; }
+      if (n > 0) {
+        if (await hostIsSpa(p)) { spaRejected.push(`${company} (${p.type})`); continue; }
+        hit = { type: p.type, url, slug: s, n }; break outer;
+      }
     }
   }
   done++;
+  const key = keyOf(r);
   if (hit) {
+    schedule.delete(key);
     const was = r.f[iType] || '?';
     fixed.push({ company, was, now: hit.type, url: hit.url, n: hit.n });
     r.f[iType] = hit.type;
@@ -147,18 +181,23 @@ for (const r of targets) {
     console.log(`  ✅ ${company}: ${was} → ${hit.type} (${hit.n} jobs)  ${hit.url}`);
   } else {
     stillDead.push(company);
+    const spa = spaRejected.some(x => x.startsWith(company + ' ('));
+    schedule.set(key, recordFailure(schedule.get(key), { key, company, today: TODAY, result: spa ? 'unverified: host 200s a nonsense slug' : 'no board found' }));
   }
   if (done % 20 === 0) console.log(`  … ${done}/${targets.length}`);
 }
 
 console.log(`\n──────── repair summary ────────`);
 console.log(`repaired:   ${fixed.length}`);
+console.log(`unverified (SPA host, control failed): ${spaRejected.length}`);
 console.log(`still dead: ${stillDead.length}${stillDead.length ? ' (' + stillDead.slice(0, 12).join(', ') + (stillDead.length > 12 ? ', …' : '') + ')' : ''}`);
 
 if (!APPLY) {
   console.log('\nDRY RUN — nothing written. Re-run with --apply to update data/company-index.tsv.');
   process.exit(0);
 }
+saveSchedule(SCHEDULE, schedule);
+console.log(`backoff schedule: ${schedule.size} board(s) → data/_repair-schedule.tsv`);
 if (!fixed.length) { console.log('\nnothing to write.'); process.exit(0); }
 
 copyFileSync(INDEX, `${INDEX}.bak`);

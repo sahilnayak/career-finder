@@ -1,0 +1,3 @@
+company	hq	careers_url	ats_type	ats_api_url	source	date_added	last_scanned	last_status
+Delta Local	SF	https://jobs.ashbyhq.com/delta	ashby	https://api.ashbyhq.com/posting-api/job-board/delta?includeCompensation=true	mine	2026-09-01	2026-10-05	9 jobs / 1 kept
+Gamma Old		https://jobs.lever.co/gamma	lever	https://api.lever.co/v0/postings/gamma	mine	2026-09-01	2026-10-05	error: HTTP 404

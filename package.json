@@ -21,6 +21,8 @@
     "browser-boards": "node scripts/browser-boards.mjs",
     "morning": "node scripts/morning.mjs",
     "morning:dry": "node scripts/morning.mjs --dry-run",
+    "repair": "node scripts/repair-index.mjs",
+    "repair:apply": "node scripts/repair-index.mjs --apply",
     "schedule": "node scripts/schedule.mjs",
     "schedule:status": "node scripts/schedule.mjs status",
     "schedule:print": "node scripts/schedule.mjs --print",

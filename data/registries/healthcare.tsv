@@ -1,0 +1,18 @@
+company	ats_type	ats_api_url	careers_url	status	verified_on	how_verified	note
+Sutter Health	workday	https://wd1.myworkdaysite.com/wday/cxs/sutterhealth/SH/jobs	https://wd1.myworkdaysite.com/recruiting/sutterhealth/SH	verified	2026-10-06	POST 200 JSON, 1251 jobs	Workday on myworkdaysite.com (/recruiting/sutterhealth/SH); scan-core builds its apply URLs on the myworkdaysite host
+UCSF Health	oracle	https://iazuqy.fa.ocs.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&finder=findReqs;siteNumber=CX_1,limit=1,offset=0	https://iazuqy.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/requisitions	verified	2026-10-06	GET 200 JSON, 800 jobs	Oracle HCM CX_1 site; parsed by scan-core parseOracle
+CommonSpirit Health (Dignity Health)	workday		https://commonspirit.wd1.myworkdayjobs.com/CommonSpirit_External	unverified	2026-10-06	POST 422, 0 jobs	tenant/site guess rejected (Workday 422); real tenant not identified
+Kaiser Permanente	workday		https://kp.wd5.myworkdayjobs.com/KaiserPermanente	unverified	2026-10-06	POST 422, 0 jobs	tenant/site guess rejected (Workday 422); Kaiser posts on its own careers site
+Stanford Health Care	workday		https://stanfordhealthcare.wd5.myworkdayjobs.com/SHC_External	unverified	2026-10-06	POST 422, 0 jobs	tenant/site guess rejected (Workday 422); real tenant not identified
+Stanford University	workday		https://stanford.wd5.myworkdayjobs.com/Stanford	unverified	2026-10-06	POST 422, 0 jobs	tenant/site guess rejected (Workday 422); real tenant not identified
+John Muir Health	workday		https://johnmuirhealth.wd1.myworkdayjobs.com/JMH	unverified	2026-10-06	POST 422, 0 jobs	tenant/site guess rejected (Workday 422); real tenant not identified
+El Camino Health	workday		https://elcaminohealth.wd1.myworkdayjobs.com/ECH	unverified	2026-10-06	POST 422, 0 jobs	tenant/site guess rejected (Workday 422); real tenant not identified
+Genentech	workday	https://roche.wd3.myworkdayjobs.com/wday/cxs/roche/roche-ext/jobs	https://roche.wd3.myworkdayjobs.com/roche-ext	verified	2026-10-06	POST 200 JSON, 1208 jobs	Roche-wide Workday site (roche-ext); Genentech reqs are a subset
+Gilead Sciences	workday	https://gilead.wd1.myworkdayjobs.com/wday/cxs/gilead/gileadcareers/jobs	https://gilead.wd1.myworkdayjobs.com/gileadcareers	verified	2026-10-06	POST 200 JSON, 510 jobs	
+Illumina	workday	https://illumina.wd1.myworkdayjobs.com/wday/cxs/illumina/illumina-careers/jobs	https://illumina.wd1.myworkdayjobs.com/illumina-careers	verified	2026-10-06	POST 200 JSON, 158 jobs	
+Oscar Health	greenhouse	https://boards-api.greenhouse.io/v1/boards/oscar/jobs	https://boards.greenhouse.io/oscar	verified	2026-10-06	GET 200 JSON, 259 jobs; board name matches company	
+Included Health	greenhouse		https://boards.greenhouse.io/includedhealth	unverified	2026-10-06	GET 404, 0 jobs	greenhouse slug guess returned 404; board not found
+Carbon Health	greenhouse		https://boards.greenhouse.io/carbonhealth	unverified	2026-10-06	GET 404, 0 jobs	greenhouse slug guess returned 404; board not found
+Omada Health	greenhouse	https://boards-api.greenhouse.io/v1/boards/omadahealth/jobs	https://boards.greenhouse.io/omadahealth	verified	2026-10-06	GET 200 JSON, 17 jobs; board name matches company	
+Color Health	greenhouse		https://boards.greenhouse.io/color	unverified	2026-10-06	GET 404, 0 jobs	greenhouse slug guess returned 404; board not found
+Abridge	ashby	https://api.ashbyhq.com/posting-api/job-board/abridge	https://jobs.ashbyhq.com/abridge	verified	2026-10-06	GET 200 JSON, 49 jobs	

@@ -75,7 +75,7 @@ const tasks = rows.map(r => {
           c: j.company, t: title, l: loc, p: j.postedAt ? j.postedAt.toISOString() : '',
           u: j.url, a: api.type, pri: isPrimaryRole(title),
         };
-        if (locFilter(loc)) {
+        if (locFilter(loc, title, j.offices)) {
           broadLocal.push(rec);
           famCount[api.type] = (famCount[api.type] || 0) + 1;
           if (!titleFilter(title)) missedByTitle.push(rec);

@@ -1,0 +1,24 @@
+company	ats_type	ats_api_url	careers_url	status	verified_on	how_verified	note
+NVIDIA	workday	https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs	https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite	verified	2026-10-06	POST 200 JSON, 2000 jobs	Workday reports total capped at 2000
+Cisco	workday	https://cisco.wd5.myworkdayjobs.com/wday/cxs/cisco/Cisco_Careers/jobs	https://cisco.wd5.myworkdayjobs.com/Cisco_Careers	verified	2026-10-06	POST 200 JSON, 1366 jobs	
+Salesforce	workday	https://salesforce.wd12.myworkdayjobs.com/wday/cxs/salesforce/External_Career_Site/jobs	https://salesforce.wd12.myworkdayjobs.com/External_Career_Site	verified	2026-10-06	POST 200 JSON, 1506 jobs	
+Adobe	workday	https://adobe.wd5.myworkdayjobs.com/wday/cxs/adobe/external_experienced/jobs	https://adobe.wd5.myworkdayjobs.com/external_experienced	verified	2026-10-06	POST 200 JSON, 450 jobs	
+AMD	workday		https://amd.wd1.myworkdayjobs.com/AMD	unverified	2026-10-06	POST 422, 0 jobs	tenant/site guess rejected (Workday 422); real tenant not identified
+Snap	workday		https://snap.wd1.myworkdayjobs.com/snap	unverified	2026-10-06	POST 422, 0 jobs	tenant/site guess rejected (Workday 422); real tenant not identified
+Palo Alto Networks	workday		https://paloaltonetworks.wd1.myworkdayjobs.com/External	unverified	2026-10-06	POST 422, 0 jobs	tenant/site guess rejected (Workday 422); real tenant not identified
+HP Inc.	workday	https://hp.wd5.myworkdayjobs.com/wday/cxs/hp/ExternalCareerSite/jobs	https://hp.wd5.myworkdayjobs.com/ExternalCareerSite	verified	2026-10-06	POST 200 JSON, 900 jobs	
+Airbnb	greenhouse	https://boards-api.greenhouse.io/v1/boards/airbnb/jobs	https://boards.greenhouse.io/airbnb	verified	2026-10-06	GET 200 JSON, 157 jobs; board name matches company	
+Lyft	greenhouse	https://boards-api.greenhouse.io/v1/boards/lyft/jobs	https://boards.greenhouse.io/lyft	verified	2026-10-06	GET 200 JSON, 192 jobs; board name matches company	
+Pinterest	greenhouse	https://boards-api.greenhouse.io/v1/boards/pinterest/jobs	https://boards.greenhouse.io/pinterest	verified	2026-10-06	GET 200 JSON, 174 jobs; board name matches company	
+Dropbox	greenhouse	https://boards-api.greenhouse.io/v1/boards/dropbox/jobs	https://boards.greenhouse.io/dropbox	verified	2026-10-06	GET 200 JSON, 35 jobs; board name matches company	
+Okta	greenhouse	https://boards-api.greenhouse.io/v1/boards/okta/jobs	https://boards.greenhouse.io/okta	verified	2026-10-06	GET 200 JSON, 376 jobs; board name matches company	
+Roblox	greenhouse	https://boards-api.greenhouse.io/v1/boards/roblox/jobs	https://boards.greenhouse.io/roblox	verified	2026-10-06	GET 200 JSON, 260 jobs; board name matches company	
+Anthropic	greenhouse	https://boards-api.greenhouse.io/v1/boards/anthropic/jobs	https://boards.greenhouse.io/anthropic	verified	2026-10-06	GET 200 JSON, 640 jobs; board name matches company	
+OpenAI	ashby	https://api.ashbyhq.com/posting-api/job-board/openai	https://jobs.ashbyhq.com/openai	verified	2026-10-06	GET 200 JSON, 819 jobs	
+Apple	custom		https://jobs.apple.com	unverified	2026-10-06	not requested: proprietary careers site, no public JSON in a supported ATS family	not guessed; needs a bespoke parser
+Google	custom		https://careers.google.com	unverified	2026-10-06	not requested: proprietary careers site, no public JSON in a supported ATS family	not guessed; needs a bespoke parser
+Uber	custom		https://uber.com/careers	unverified	2026-10-06	not requested: proprietary careers site, no public JSON in a supported ATS family	not guessed; needs a bespoke parser
+Meta	custom		https://metacareers.com	unverified	2026-10-06	not requested: proprietary careers site, no public JSON in a supported ATS family	not guessed; needs a bespoke parser
+Microsoft	custom		https://jobs.careers.microsoft.com	unverified	2026-10-06	not requested: proprietary careers site, no public JSON in a supported ATS family	not guessed; needs a bespoke parser
+Amazon	custom		https://amazon.jobs	unverified	2026-10-06	not requested: proprietary careers site, no public JSON in a supported ATS family	not guessed; needs a bespoke parser
+Netflix	custom		https://explore.jobs.netflix.net	unverified	2026-10-06	not requested: proprietary careers site, no public JSON in a supported ATS family	not guessed; needs a bespoke parser

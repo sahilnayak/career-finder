@@ -27,7 +27,8 @@ export const LIVE_BOARDS = {
   rippling:        ['https://ats.rippling.com/carbon-health/jobs'],
   icims:           ['https://careers-gdms.icims.com/jobs', 'https://careers-peraton.icims.com/jobs'],
   oracle:          ['https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/requisitions',
-                    'https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_45001/requisitions'],
+                    'https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_45001/requisitions',
+                    'https://iazuqy.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/requisitions'],   // UCSF Health (ocs pod), verified 2026-10-06
   taleo:           ['https://aa224.taleo.net/careersection/ex/jobsearch.ftl'],
 };
 // Families whose list endpoint publishes no posting date (they never pass a recency window on
@@ -149,6 +150,19 @@ for (const [fam, file, u] of PFX) {
   ok(rj.length === 1 && !('locs' in rj[0]) && rj[0].location === 'Austin, TX; Remote (United States)', `rippling: collapsed by uuid, no internal locs Set leaked (${JSON.stringify(rj[0])})`);
   ok(oj[0]?.location === 'Austin, TX; Denver, CO; Remote', `oracle: primary + secondary + remote locations (${oj[0]?.location})`);
 }
+{
+  // Oracle HCM on the *.fa.ocs.oraclecloud.com pod (UCSF Health, CX_1). The weekday audit counted 7 UCSF
+  // RN rows as not-in-index: this is the family that reads them. Fixture = a trimmed REAL response
+  // (3 requisitions, newest first) saved 2026-10-06 from the public CandidateExperience REST endpoint.
+  const ucsfUrl = 'https://iazuqy.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/requisitions';
+  const uApi = detectApi({ careers_url: ucsfUrl });
+  ok(uApi?.type === 'oracle' && uApi.board === 'iazuqy.fa.ocs.oraclecloud.com/CX_1', `oracle (HCM): ocs-pod host + CX_1 detected (${uApi?.board})`);
+  ok(/sortBy=POSTING_DATES_DESC/.test(uApi.url) && /\/hcmRestApi\/resources\/latest\/recruitingCEJobRequisitions\?/.test(uApi.url), 'oracle (HCM): REST endpoint is newest-first, so a window sweep can stop early');
+  const uj = PARSERS.oracle({ pages: [JSON.parse(fx('oraclehcm-ucsf.json'))] }, 'UCSF Health', uApi);
+  ok(uj.length === 3 && uj.every((j) => j.title && j.postedAt instanceof Date && /^https:\/\/iazuqy\.fa\.ocs\.oraclecloud\.com\/hcmUI\/CandidateExperience\/en\/sites\/CX_1\/job\/[A-Za-z0-9_]+$/.test(j.url)),
+    `oracle (HCM): UCSF fixture parses 3 dated rows with human apply URLs (${uj[0]?.url})`);
+  ok(uj.every((j) => /CA|California|United States/.test(j.location)), `oracle (HCM): UCSF locations read (${uj[0]?.location})`);
+}
 
 // ── 5. Pagination (stubbed fetch, no network) ────────────────────────
 console.log('\n5. Pagination: no page cap, Workday total-only-on-page-1');
@@ -162,7 +176,7 @@ try {
     const n = Math.max(0, Math.min(limit, 1234 - offset));
     return reply({ total: offset === 0 ? 1234 : 0, jobPostings: Array.from({ length: n }, (_, i) => ({ title: `J${offset + i}`, externalPath: `/job/x_${offset + i}`, postedOn: 'Posted Today' })) });
   };
-  const wd = await fetchWorkday('https://acme.wd5.myworkdayjobs.com/wday/cxs/acme/External/jobs');
+  const wd = await fetchWorkday('https://acme.wd5.myworkdayjobs.com/wday/cxs/acme/External/jobs', { full: true });
   ok(wd.jobPostings.length === 1234 && new Set(wd.jobPostings.map((j) => j.title)).size === 1234, `workday: 1234/1234 fetched in ${calls} calls (old code stopped at 40, then 200)`);
 
   globalThis.fetch = async (u) => {

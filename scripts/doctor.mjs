@@ -5,8 +5,9 @@
  * Checks all prerequisites and prints a pass/fail checklist.
  */
 
-import { existsSync, mkdirSync, readdirSync, renameSync, rmdirSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync } from 'fs';
 import { NARRATIVE_MD, LEGACY_NARRATIVE_MD } from './lib/paths.mjs';
+import { ensureSeedIndex } from './lib/index-tsv.mjs';
 import { spawnSync } from 'child_process';
 import { homedir } from 'os';
 import { join, dirname } from 'path';
@@ -135,6 +136,15 @@ function checkFonts() {
   return { pass: true, label: 'Fonts directory ready' };
 }
 
+// Fresh installs ship a bundled starter index (templates/company-index.starter.tsv). When the live
+// index is missing or header-only, restore it offline so the first sweep has boards to read.
+function checkCompanyIndex() {
+  const r = ensureSeedIndex({ root: projectRoot });
+  if (r.restored) return { pass: true, label: `Company index restored from the bundled starter (${r.rows} boards)` };
+  if (r.rows > 0) return { pass: true, label: `Company index has ${r.rows} boards` };
+  return { pass: false, label: 'Company index is empty and no starter seed is bundled', fix: 'Run: node scripts/build-company-index.mjs --import <another company-index.tsv> --scrub' };
+}
+
 function checkAutoDir(name) {
   const dirPath = join(projectRoot, name);
   if (existsSync(dirPath)) {
@@ -255,6 +265,33 @@ async function optionalLanes() {
   ];
 }
 
+/** Health signals from the request ledger, the index and the nomination ledger. Informational: never fails doctor. */
+async function printHealth() {
+  const yellow = (s) => isTTY ? `\x1b[33m${s}\x1b[0m` : s;
+  try {
+    const { readLedger, aggregate } = await import('./request-ledger.mjs');
+    const { healthLines } = await import('./lib/health.mjs');
+    const { parseTsv } = await import('./lib/index-tsv.mjs');
+    const { readLedger: readNoms } = await import('./lib/nominate.mjs');
+    const rd = (p) => { try { return readFileSync(join(projectRoot, p), 'utf8'); } catch { return ''; } };
+    let roles = [], syn = () => [];
+    try { const T = await import('./targets.mjs'); roles = T.loadTargets().targets.roles; syn = T.synonymsFor; } catch { /* not onboarded */ }
+    const day = new Date().toLocaleDateString('en-CA');
+    const titles = [];
+    for (const f of ['data/scored-jobs.tsv', 'data/_web-roles.tsv', 'data/_candidates.tsv']) {
+      for (const l of rd(f).split('\n').slice(1)) { const c = l.split('\t'); if (c[0] === day && c[2]) titles.push(c[2]); }
+    }
+    const agg = aggregate(readLedger({ path: join(projectRoot, 'data/_request-ledger.tsv'), sinceIso: new Date(Date.now() - 864e5).toISOString() }));
+    const h = healthLines({ agg, indexRows: parseTsv(rd('data/company-index.tsv')).rows, roles, synonymsFor: syn, titles,
+      ledgerRows: readNoms(join(projectRoot, 'data')).filter((r) => r.date >= new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)) });
+    console.log('\nHealth signals:');
+    for (const l of h.lines) console.log(`  ${dim(l)}`);
+    for (const w of h.warnings) console.log(`  ${yellow('WARNING')} ${w}`);
+  } catch (e) {
+    console.log(`\nHealth signals: unavailable (${e.message})`);
+  }
+}
+
 async function main() {
   console.log('\ncareer-finder doctor');
   console.log('================\n');
@@ -270,6 +307,7 @@ async function main() {
     await checkTargets(),
     checkFonts(),
     checkAutoDir('data'),
+    checkCompanyIndex(),
     checkAutoDir('output'),
     checkAutoDir('reports'),
   ];
@@ -288,6 +326,8 @@ async function main() {
       }
     }
   }
+
+  await printHealth();
 
   console.log('\nOptional lanes (the morning run skips any that are missing):');
   for (const [label, ok] of await optionalLanes()) console.log(`  ${ok ? green('✓') : dim(ok === null ? 'o' : '-')} ${label}`);

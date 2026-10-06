@@ -11,7 +11,7 @@
  */
 
 import { record as recordRequest } from './request-ledger.mjs';
-import { classifyLocation as targetsClassify, locationMatches, titleMatches, hasTargets } from './targets.mjs';
+import { classifyLocation as targetsClassify, locationVerdict, titleMatches, hasTargets } from './targets.mjs';
 import * as targetsMod from './targets.mjs';
 import { readFileSync, existsSync, appendFileSync } from 'fs';
 
@@ -99,8 +99,21 @@ export function makeRecencyPredicate(days = 1) {
 
 // Rolling N-hour window (precise "just posted" — for speed-to-lead).
 export function makeHoursPredicate(hours) {
+  const ov = windowOverride();
+  if (ov) return (d) => d instanceof Date && !isNaN(d) && d.getTime() >= ov.start.getTime() && d.getTime() <= ov.end.getTime();
   const cutoff = Date.now() - hours * 3600 * 1000;
   return (d) => d instanceof Date && !isNaN(d) && d.getTime() >= cutoff;
+}
+
+/**
+ * CAREER_FINDER_WINDOW_START / _END (ISO): pin the rolling-hours window to a fixed interval. Set only by
+ * discovery-audit --live so a rerun measures the truth window, not "the last H hours from when I started".
+ */
+export function windowOverride() {
+  const s = process.env.CAREER_FINDER_WINDOW_START, e = process.env.CAREER_FINDER_WINDOW_END;
+  if (!s || !e) return null;
+  const start = new Date(s), end = new Date(e);
+  return isNaN(start) || isNaN(end) ? null : { start, end };
 }
 
 // ── API detection ───────────────────────────────────────────────────
@@ -130,9 +143,8 @@ export function detectApi(company) {
       return { type: 'bamboohr', url: company.api, _slug: m?.[1] };
     }
     if (company.api.includes('teamtailor')) return { type: 'teamtailor', url: company.api };
-    if (company.api.includes('myworkdayjobs') || company.api.includes('/wday/cxs/')) {
-      const m = company.api.match(/\/\/([^.]+)\.([^.]+)\.myworkdayjobs\.com\/wday\/cxs\/[^/]+\/([^/?#]+)/);
-      return { type: 'workday', url: company.api, _wd: m ? { tenant: m[1], shard: m[2], site: m[3] } : null };
+    if (company.api.includes('myworkdayjobs') || company.api.includes('myworkdaysite') || company.api.includes('/wday/cxs/')) {
+      return { type: 'workday', url: company.api, _wd: parseWorkdayApiUrl(company.api) };
     }
     if (company.api.includes('apply.workable.com')) {
       const m = company.api.match(/\/accounts\/([^/?#]+)/);
@@ -172,7 +184,13 @@ export function detectApi(company) {
   const wdMatch = url.match(/\/\/([^.]+)\.([^.]+)\.myworkdayjobs\.com\/(?:[a-z]{2}-[A-Z]{2}\/)?([^/?#]+)/);
   if (wdMatch) {
     const [, tenant, shard, site] = wdMatch;
-    return { type: 'workday', url: `https://${tenant}.${shard}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`, _wd: { tenant, shard, site } };
+    return { type: 'workday', url: `https://${tenant}.${shard}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`, _wd: { tenant, shard, site, kind: 'jobs' } };
+  }
+
+  const wsMatch = url.match(/\/\/([^./]+)\.myworkdaysite\.com\/(?:[a-z]{2}-[A-Z]{2}\/)?recruiting\/([^/?#]+)\/([^/?#]+)/);
+  if (wsMatch) {
+    const [, shard, tenant, site] = wsMatch;
+    return { type: 'workday', url: `https://${shard}.myworkdaysite.com/wday/cxs/${tenant}/${site}/jobs`, _wd: { tenant, shard, site, kind: 'site' } };
   }
 
   const bhMatch = url.match(/\/\/([^.]+)\.bamboohr\.com/);
@@ -256,7 +274,10 @@ export function detectEnterprise(url) {
 function parseGreenhouse(json, companyName) {
   return (json.jobs || []).map(j => ({
     title: j.title || '', url: j.absolute_url || '', company: companyName,
-    location: j.location?.name || '', postedAt: toDate(j.first_published || j.updated_at), updatedAt: toDate(j.updated_at),
+    // first_published is the creation date; updated_at moves on every edit, so it is NEVER used as a
+    // posting date. A row with only updated_at is tagged dateSource 'updated_at' and kept out of the 24h view.
+    location: j.location?.name || '', postedAt: toDate(j.first_published), updatedAt: toDate(j.updated_at),
+    dateSource: j.first_published ? 'first_published' : (j.updated_at ? 'updated_at' : null),
     department: j.departments?.[0]?.name || '', team: j.departments?.[1]?.name || j.departments?.[0]?.name || '',
     offices: (j.offices || []).map(o => o.name).filter(Boolean),
   }));
@@ -287,12 +308,65 @@ function parseWorkdayPostedOn(s) {
   if (m) return new Date(now - parseInt(m[1], 10) * 86_400_000);
   return null;
 }
+/** Numeric req id and its letter prefix from a Workday path: ".../Title_JR1998500-1" -> {prefix:'JR', num:1998500, suffix:1}. */
+export function workdayReqId(externalPath = '') {
+  const m = String(externalPath).match(/_((?:[A-Za-z]+)?[-_]?)(\d{4,})(?:-(\d+))?(?:[/?#]|$)/);
+  return m ? { prefix: m[1].replace(/[-_]/g, '').toUpperCase(), num: Number(m[2]), suffix: m[3] ? Number(m[3]) : 0 } : null;
+}
+const slugNorm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * Likely-repost flags from data already in the list response (no extra requests):
+ *   req-suffix      path ends "_JR123-1": Workday appends -N when a req is reposted/copied
+ *   slug-mismatch   the URL slug no longer matches the title (title edited after the req was created)
+ *   jr-distance     a "fresh" row whose req number sits far below the tenant's fresh-row median
+ *                   (a months-old requisition re-listed today)
+ */
+export function flagWorkdayReposts(rows) {
+  const ids = rows.map((r) => workdayReqId(r.externalPath));
+  const fresh = new Map();   // prefix -> [num] for rows posted today/yesterday
+  rows.forEach((r, i) => { const a = workdayAgeDays(r.postedOn); if (ids[i] && a != null && a <= 1) { if (!fresh.has(ids[i].prefix)) fresh.set(ids[i].prefix, []); fresh.get(ids[i].prefix).push(ids[i].num); } });
+  const median = new Map();
+  for (const [k, v] of fresh) if (v.length >= 5) { v.sort((x, y) => x - y); median.set(k, v[Math.floor(v.length / 2)]); }
+  return rows.map((r, i) => {
+    const flags = []; const id = ids[i];
+    if (id?.suffix) flags.push('req-suffix');
+    const slug = String(r.externalPath || '').split('/').pop().replace(/_(?:[A-Za-z]+)?[-_]?\d{4,}(?:-\d+)?$/, '');
+    if (slug && r.title && slugNorm(slug) !== slugNorm(r.title)) flags.push('slug-mismatch');
+    const a = workdayAgeDays(r.postedOn);
+    const med = id && median.get(id.prefix);
+    if (med && a != null && a <= 1 && med - id.num > Math.max(5000, med * 0.05)) flags.push('jr-distance');
+    return flags;
+  });
+}
+
+/** Workday API URL -> { tenant, shard, site, kind }. kind 'jobs' = {tenant}.{shard}.myworkdayjobs.com; 'site' = {shard}.myworkdaysite.com (/recruiting/{tenant}/{site}). */
+export function parseWorkdayApiUrl(apiUrl) {
+  let m = String(apiUrl).match(/\/\/([^.]+)\.([^.]+)\.myworkdayjobs\.com\/wday\/cxs\/[^/]+\/([^/?#]+)/);
+  if (m) return { tenant: m[1], shard: m[2], site: m[3], kind: 'jobs' };
+  m = String(apiUrl).match(/\/\/([^./]+)\.myworkdaysite\.com\/wday\/cxs\/([^/]+)\/([^/?#]+)/);
+  if (m) return { tenant: m[2], shard: m[1], site: m[3], kind: 'site' };
+  return null;
+}
+/** Base for a posting's apply URL (externalPath is appended). */
+export function workdayApplyBase(wd) {
+  return wd.kind === 'site'
+    ? `https://${wd.shard}.myworkdaysite.com/en-US/recruiting/${wd.tenant}/${wd.site}`
+    : `https://${wd.tenant}.${wd.shard}.myworkdayjobs.com/en-US/${wd.site}`;
+}
+
 function parseWorkday(json, companyName, api) {
-  const host = api._wd ? `https://${api._wd.tenant}.${api._wd.shard}.myworkdayjobs.com/en-US/${api._wd.site}` : '';
-  return (json.jobPostings || []).map(j => ({
-    title: j.title || '', url: j.externalPath ? (host + j.externalPath) : '', company: companyName,
-    location: WORKDAY_LOC_PLACEHOLDER.test(j.locationsText || '') ? WORKDAY_LOC_UNRESOLVED : (j.locationsText || ''), postedAt: parseWorkdayPostedOn(j.postedOn), updatedAt: parseWorkdayPostedOn(j.postedOn),
-  }));
+  const host = api._wd ? workdayApplyBase(api._wd) : '';
+  const rows = json.jobPostings || [];
+  const flags = flagWorkdayReposts(rows);
+  return rows.map((j, i) => {
+    if (flags[i].length) scanStats.workdayReposts++;
+    return {
+      title: j.title || '', url: j.externalPath ? (host + j.externalPath) : '', company: companyName,
+      location: WORKDAY_LOC_PLACEHOLDER.test(j.locationsText || '') ? WORKDAY_LOC_UNRESOLVED : (j.locationsText || ''), postedAt: parseWorkdayPostedOn(j.postedOn), updatedAt: parseWorkdayPostedOn(j.postedOn),
+      repostFlags: flags[i],
+    };
+  });
 }
 function parseBambooHR(json, companyName, api) {
   const slug = api._slug;
@@ -507,9 +581,47 @@ export async function fetchJson(url, { method = 'GET', body, expect = 'json' } =
     try { res = await fetch(url, init); }
     catch (e) { recordRequest(url, { status: e?.name === 'AbortError' ? 'timeout' : 'error' }); throw e; }
     recordRequest(url, { status: res.status });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) { const err = new Error(`HTTP ${res.status}`); err.status = res.status; err.retryAfterMs = retryAfterMs(res.headers?.get?.('retry-after')); throw err; }
     return expect === 'text' ? await res.text() : await res.json();
   } finally { clearTimeout(timer); }
+}
+
+// ── 429 backoff ──────────────────────────────────────────────────────
+// Weekday audit 2026-10-06: 1,124-1,592 of ~2,700-3,100 Workday requests per role were HTTP 429.
+// Every paged family now retries 429/503 with exponential backoff + jitter instead of swallowing the
+// page as "empty". `net.sleep` is injectable so tests do not wait.
+export const net = { sleep: (ms) => new Promise((r) => setTimeout(r, ms)) };
+export const BACKOFF_BASE_MS = Number(process.env.CAREER_FINDER_BACKOFF_MS || 1000);
+export const BACKOFF_RETRIES = Number(process.env.CAREER_FINDER_BACKOFF_RETRIES || 4);
+/** Run counters the scan summary prints (reset by nothing: one process = one run). */
+export const scanStats = { backoff429: 0, backoffGaveUp: 0, workdayTenants: 0, workdayEarlyStop: 0, workdayPageCap: [], workdayDetailCapped: [], workdayDetailFetched: 0, workdayReposts: 0 };
+
+/** Retry-After (seconds or HTTP date) -> ms, capped at 60s; null when absent/unparseable. */
+export function retryAfterMs(v, now = Date.now()) {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  const ms = Number.isFinite(n) ? n * 1000 : Date.parse(v) - now;
+  return Number.isFinite(ms) && ms >= 0 ? Math.min(ms, 60_000) : null;
+}
+/** Per-host timeout counts; a host past HOST_TIMEOUT_LIMIT is skipped for the rest of the run. */
+export const hostTimeouts = new Map();
+export const HOST_TIMEOUT_LIMIT = Number(process.env.CAREER_FINDER_HOST_TIMEOUT_LIMIT || 5);
+const hostOf = (u) => { try { return new URL(u).host; } catch { return ''; } };
+
+export async function fetchJsonBackoff(url, opts = {}, { retries = BACKOFF_RETRIES, baseMs = BACKOFF_BASE_MS } = {}) {
+  const host = hostOf(url);
+  for (let attempt = 0; ; attempt++) {
+    if (host && (hostTimeouts.get(host) || 0) >= HOST_TIMEOUT_LIMIT) { const e = new Error(`host ${host} skipped after ${HOST_TIMEOUT_LIMIT} timeouts`); e.status = 'skipped'; throw e; }
+    try { return await fetchJson(url, opts); }
+    catch (e) {
+      if (e?.name === 'AbortError' && host) hostTimeouts.set(host, (hostTimeouts.get(host) || 0) + 1);
+      const retryable = e?.status === 429 || e?.status === 503;
+      if (!retryable) throw e;
+      if (attempt >= retries) { scanStats.backoffGaveUp++; throw e; }
+      scanStats.backoff429++;
+      await net.sleep(e.retryAfterMs ?? (baseMs * 2 ** attempt + Math.floor(Math.random() * baseMs / 2)));
+    }
+  }
 }
 
 // Safety ceiling on jobs pulled from ONE paged board (Workday/iCIMS/Oracle/Taleo). Not a page
@@ -525,10 +637,41 @@ async function inBatches(items, n, fn) {
   return out;
 }
 
-export async function fetchWorkday(apiUrl, { maxJobs = ATS_MAX_JOBS } = {}) {
-  const LIMIT = 20;
-  const body = (offset) => ({ appliedFacets: {}, limit: LIMIT, offset, searchText: '' });
-  const first = await fetchJson(apiUrl, { method: 'POST', body: body(0) });
+/** Age in whole days from Workday's "Posted Today / Yesterday / 3 Days Ago / 30+ Days Ago"; null = unknown. */
+export function workdayAgeDays(postedOn) {
+  const low = String(postedOn || '').toLowerCase();
+  if (!low) return null;
+  if (low.includes('today')) return 0;
+  if (low.includes('yesterday')) return 1;
+  const m = low.match(/(\d+)\+?\s*day/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+export const WORKDAY_PAGE = 20;                 // Workday rejects limit > 20
+export const WORKDAY_CONCURRENCY = Number(process.env.CAREER_FINDER_WD_CONCURRENCY || 2);   // per tenant
+export const WORKDAY_MAX_PAGES = Number(process.env.CAREER_FINDER_WD_PAGES || 8);           // per tenant unless full
+const WD_FULL = process.argv.includes('--full') || process.env.CAREER_FINDER_WD_FULL === '1';
+
+/**
+ * Workday sweep. Lists are usually newest-first (no sort is requested), so a window sweep pages until a page ENDS outside the window:
+ *   - pages in groups of WORKDAY_CONCURRENCY (1-2 per tenant, not 4) with 429 backoff;
+ *   - stops when a page's last dated row is older than the window (never older than "Posted Yesterday");
+ *   - at most WORKDAY_MAX_PAGES pages unless `full` (or --full): when the cap bites with rows still
+ *     fresh on the last page it is recorded in scanStats.workdayPageCap, never silent;
+ *   - location/detail fetches run only for rows that pass `prefilter` (date + title), so a 2,000-row
+ *     tenant no longer spends 150 detail requests on rows that were going to be dropped.
+ * `full` fetches the whole board (old behaviour: plan from page 1's total, no early stop, no cap).
+ */
+export async function fetchWorkday(apiUrl, { maxJobs = ATS_MAX_JOBS, windowDays = scanWindowDays(), full = WD_FULL, maxPages = WORKDAY_MAX_PAGES, prefilter = null, label = '' } = {}) {
+  const body = (offset) => ({ appliedFacets: {}, limit: WORKDAY_PAGE, offset, searchText: '' });
+  const page = (o) => fetchJsonBackoff(apiUrl, { method: 'POST', body: body(o) });
+  const cutoff = Math.max(1, Number(windowDays) || 1);
+  const isOld = (j) => { const a = workdayAgeDays(j.postedOn); return a != null && a > cutoff; };
+  // Stop only when the LAST dated row of a page is outside the window: one pinned/evergreen old row
+  // near the top must not hide fresh rows on later pages (no sort is sent, so order is not guaranteed).
+  const lastIsOld = (rows) => { for (let i = rows.length - 1; i >= 0; i--) if (workdayAgeDays(rows[i].postedOn) != null) return isOld(rows[i]); return false; };
+  scanStats.workdayTenants++;
+  const first = await page(0);
   const all = [...(first.jobPostings || [])];
   // Workday reports the real `total` ONLY on the first page and returns 0 on every page after
   // it (reproduced against Salesforce: offset 0 -> total 1427, offset 20 -> 0, offset 40 -> 0).
@@ -537,13 +680,26 @@ export async function fetchWorkday(apiUrl, { maxJobs = ATS_MAX_JOBS } = {}) {
   if (data.total) total = data.total;   // literal guarded by test-hiringcafe.mjs §17
   total = Math.min(total, maxJobs);
   const offsets = [];
-  if (all.length >= LIMIT) for (let o = LIMIT; o < total; o += LIMIT) offsets.push(o);
-  const pages = await inBatches(offsets, PAGE_CONCURRENCY, async (o) => {
-    try { return (await fetchJson(apiUrl, { method: 'POST', body: body(o) })).jobPostings || []; } catch { return []; }
-  });
-  for (const p of pages) all.push(...p);
-  await resolveWorkdayLocations(apiUrl, all);
-  return { jobPostings: all, total: first.total || all.length };
+  if (all.length >= WORKDAY_PAGE) for (let o = WORKDAY_PAGE; o < total; o += WORKDAY_PAGE) offsets.push(o);
+  let pages = 1, stopped = false, capHit = false, failed = 0, lastPage = all;
+  if (!full && lastIsOld(all)) { stopped = true; }
+  else {
+    for (let i = 0; i < offsets.length && !stopped; i += WORKDAY_CONCURRENCY) {
+      const room = full ? Infinity : maxPages - pages;
+      if (room <= 0) { capHit = !lastIsOld(lastPage); break; }
+      const group = offsets.slice(i, i + Math.min(WORKDAY_CONCURRENCY, room));
+      const got = await Promise.all(group.map(async (o) => { try { return (await page(o)).jobPostings || []; } catch { failed++; return []; } }));
+      pages += group.length;
+      for (const g of got) { all.push(...g); if (g.length) lastPage = g; }
+      if (!full && lastIsOld(lastPage)) stopped = true;
+    }
+  }
+  if (stopped) scanStats.workdayEarlyStop++;
+  if (capHit) scanStats.workdayPageCap.push(label || apiUrl.replace(/^https:\/\//, '').split('/')[0]);
+  await resolveWorkdayLocations(apiUrl, all, { only: prefilter, label });
+  const out = { jobPostings: all, total: first.total || all.length, pages, earlyStopped: stopped, pageCapHit: capHit };
+  if (failed || capHit) { out.partial = true; out.expected = total; }
+  return out;
 }
 
 // Workday lists a multi-site req as locationsText "3 Locations" — a placeholder that classifies
@@ -557,9 +713,12 @@ export const WORKDAY_LOC_PLACEHOLDER = /^\s*\d+\s+locations?\s*$/i;
 export const WORKDAY_LOC_UNRESOLVED = 'Multiple locations (unresolved)';
 export const WORKDAY_DETAIL_CAP = Number(process.env.CAREER_FINDER_WD_DETAIL_CAP || 150);
 const LOCATIONISH = /,\s*[A-Z]{2}\b|,\s*[A-Za-z .]+$|\bremote\b|united states|\bUSA?\b/i;
-export async function resolveWorkdayLocations(apiUrl, postings, { concurrency = PAGE_CONCURRENCY, cap = WORKDAY_DETAIL_CAP } = {}) {
-  const todo = postings.filter((j) => WORKDAY_LOC_PLACEHOLDER.test(j.locationsText || ''));
-  if (!todo.length) return 0;
+export async function resolveWorkdayLocations(apiUrl, postings, { concurrency = WORKDAY_CONCURRENCY, cap = WORKDAY_DETAIL_CAP, only = null, label = '' } = {}) {
+  const placeholders = postings.filter((j) => WORKDAY_LOC_PLACEHOLDER.test(j.locationsText || ''));
+  // Detail requests are for rows that already passed the date + title gate (`only`); the rest keep the
+  // placeholder and fall through to WORKDAY_LOC_UNRESOLVED below without a request.
+  const todo = only ? placeholders.filter((j) => { try { return only(j); } catch { return true; } }) : placeholders;
+  if (!placeholders.length) return 0;
   const base = String(apiUrl).replace(/\/jobs\/?(\?.*)?$/, '');
   let resolved = 0;
   const needDetail = [];
@@ -568,15 +727,17 @@ export async function resolveWorkdayLocations(apiUrl, postings, { concurrency = 
     if (fromBullets.length) { j.locationsText = fromBullets.join('; '); resolved++; }
     else needDetail.push(j);
   }
+  if (needDetail.length > cap) scanStats.workdayDetailCapped.push(`${label || base.replace(/^https:\/\//, '').split('/')[0]} (${needDetail.length - cap} of ${needDetail.length} rows unresolved)`);
   await inBatches(needDetail.slice(0, cap), concurrency, async (j) => {
     if (!j.externalPath) return;
     try {
-      const d = (await fetchJson(base + j.externalPath))?.jobPostingInfo || {};
+      scanStats.workdayDetailFetched++;
+      const d = (await fetchJsonBackoff(base + j.externalPath))?.jobPostingInfo || {};
       const locs = [d.location, ...(d.additionalLocations || [])].map((x) => (typeof x === 'string' ? x : x?.descriptor || '')).filter(Boolean);
       if (locs.length) { j.locationsText = [...new Set(locs)].join('; '); resolved++; }
     } catch { /* leave for the unresolved marker */ }
   });
-  for (const j of todo) if (WORKDAY_LOC_PLACEHOLDER.test(j.locationsText || '')) j.locationsText = WORKDAY_LOC_UNRESOLVED;
+  for (const j of placeholders) if (WORKDAY_LOC_PLACEHOLDER.test(j.locationsText || '')) j.locationsText = WORKDAY_LOC_UNRESOLVED;
   return resolved;
 }
 
@@ -606,14 +767,29 @@ export async function fetchIcims(api, { maxJobs = ATS_MAX_JOBS } = {}) {
   return { pages: [first, ...rest] };
 }
 
-export async function fetchOracle(api, { maxJobs = ATS_MAX_JOBS } = {}) {
+/** Oracle Recruiting Cloud (HCM) CandidateExperience REST, newest first (sortBy=POSTING_DATES_DESC).
+ *  `stopBefore` (a Date): stop paging once a page's last PostedDate is older than it, so a window
+ *  sweep of a 7,000-req board is 1-2 pages. Without it the whole board is paged (old behaviour). */
+export async function fetchOracle(api, { maxJobs = ATS_MAX_JOBS, stopBefore = null } = {}) {
   const url = (off) => api.url.replace(/offset=\d+/, `offset=${off}`);
-  const first = await fetchJson(url(0));
+  const first = await fetchJsonBackoff(url(0));
   const total = Math.min(first?.items?.[0]?.TotalJobsCount || 0, maxJobs);
+  const pastWindow = (p) => {
+    if (!stopBefore) return false;
+    const list = p?.items?.[0]?.requisitionList || [];
+    const last = list.length ? toDate(list[list.length - 1].PostedDate) : null;
+    // PostedDate is a bare date (UTC midnight): the whole day is before the cutoff only if the day AFTER it is.
+    return !!last && last.getTime() + 86_400_000 <= stopBefore.getTime();
+  };
   const offsets = []; for (let o = ORACLE_PAGE; o < total; o += ORACLE_PAGE) offsets.push(o);
-  const rest = await inBatches(offsets, PAGE_CONCURRENCY, async (o) => { try { return await fetchJson(url(o)); } catch { return null; } });
-  const pages = [first, ...rest.filter(Boolean)];
-  return { pages, expected: total, partial: pages.length < 1 + offsets.length };
+  const pages = [first]; let failed = 0, stopped = pastWindow(first);
+  for (let i = 0; i < offsets.length && !stopped; i += WORKDAY_CONCURRENCY) {
+    const group = offsets.slice(i, i + WORKDAY_CONCURRENCY);
+    const got = await Promise.all(group.map(async (o) => { try { return await fetchJsonBackoff(url(o)); } catch { failed++; return null; } }));
+    for (const g of got) if (g) pages.push(g);
+    if (got.some((g) => g && pastWindow(g))) stopped = true;
+  }
+  return { pages, expected: total, partial: failed > 0, earlyStopped: stopped };
 }
 
 export async function fetchTaleo(api, { maxJobs = ATS_MAX_JOBS } = {}) {
@@ -662,11 +838,12 @@ export function withGreenhouseContent(url) {
   return url + (url.includes('?') ? '&' : '?') + 'content=true';
 }
 
-export async function fetchProvider(api) {
-  if (POST_PROVIDERS.has(api.type)) return fetchWorkday(api.url);
+/** `opts` carries the sweep window to the families that can stop early: { windowDays, windowStart, prefilter, full, label }. */
+export async function fetchProvider(api, opts = {}) {
+  if (POST_PROVIDERS.has(api.type)) return fetchWorkday(api.url, { ...(opts.windowDays != null ? { windowDays: opts.windowDays } : {}), ...(opts.full != null ? { full: opts.full } : {}), prefilter: opts.prefilter || null, label: opts.label || '' });
   if (api.type === 'icims') return fetchIcims(api);
   if (api.type === 'smartrecruiters') return fetchSmartRecruiters(api);
-  if (api.type === 'oracle') return fetchOracle(api);
+  if (api.type === 'oracle') return fetchOracle(api, { stopBefore: opts.full ? null : (opts.windowStart || null) });
   if (api.type === 'taleo') return fetchTaleo(api);
   if (XML_PROVIDERS.has(api.type)) return fetchJson(api.url, { expect: 'text' });
   if (api.type === 'greenhouse') return fetchJson(withGreenhouseContent(api.url));
@@ -710,7 +887,10 @@ function buildTitleFilterInner(titleFilter, { dropSeniorityNegatives = false } =
   return (title) => {
     const lower = (title || '').toLowerCase();
     const matchedPositives = positive.filter(k => lower.includes(k));
-    const hasPositive = positive.length === 0 || matchedPositives.length > 0;
+    // portals.yml positives are plain substrings; the profile's role vocabulary/synonyms (titleMatches)
+    // is OR-ed in so shipping example positives never masks "Data Platform Software Engineer" style titles.
+    const viaTargets = matchedPositives.length === 0 && hasTargets() && titleMatches(title || '');
+    const hasPositive = positive.length === 0 || matchedPositives.length > 0 || viaTargets;
     if (!hasPositive) return false;
     // A negative is neutralized when it is a substring of a positive phrase the
     // title actually matched — e.g. positive "data engineering manager" covers
@@ -740,8 +920,22 @@ export function classifyLocation(loc) {
  * titles that name a foreign region ("... - EMEA").
  */
 export function buildLocationFilter() {
+  const verdict = buildLocationVerdict();
+  return (loc, title = '', offices = []) => verdict(loc, title, offices).ok;
+}
+
+/**
+ * Same gate, with the reasoning: (loc, title, offices[]) -> { ok, flag, rule }.
+ * `offices` are the extra places the parsers already expose (Ashby secondaryLocations, Greenhouse
+ * offices[]); a posting passes when ANY of loc/offices is inside the configured area, and `flag`
+ * (multi-location, also-remote, remote-in-metro, via-offices, remote-us) is what callers carry
+ * on the candidate as `loc_flag` so a human can see why a non-obvious row passed.
+ */
+export function buildLocationVerdict() {
   // A Workday multi-site req whose sites could not be resolved is NOT filtered on the placeholder.
-  return (loc, title = '') => loc === WORKDAY_LOC_UNRESOLVED || locationMatches(loc, title);
+  return (loc, title = '', offices = []) => loc === WORKDAY_LOC_UNRESOLVED
+    ? { ok: true, flag: 'workday-sites-unresolved', rule: 'unresolved Workday multi-site marker passes to the scorer' }
+    : locationVerdict(loc, title, offices);
 }
 
 // ── First-seen registry (freshness for boards that expose no date) ───
@@ -757,18 +951,65 @@ export function buildLocationFilter() {
 // must label it as such (`date-basis: first-seen`) so nothing downstream mistakes it for an
 // ATS-published timestamp. See project_ats_publishedat_is_bumpable — even real ATS dates get
 // bumped, so an honest provenance label matters more than a confident number.
-const FIRST_SEEN_PATH = 'data/_first-seen.tsv';
+// Ledger columns: url_key  first_seen_iso  source  last_date. `source` = the lane that first saw the id
+// (scan-index, ...); `last_date` = the ATS date last seen for it (a day for day-level families, an ISO
+// timestamp otherwise), which is what makes a bumped date detectable ("re-promoted").
+// Two-column files written by older versions load fine (source/last_date read as '').
+export const FIRST_SEEN_PATH = process.env.CAREER_FINDER_FIRST_SEEN || 'data/_first-seen.tsv';
+const FIRST_SEEN_HEADER = 'url_key\tfirst_seen_iso\tsource\tlast_date\n';
 let _firstSeen = null;
+let _pending = [];
 function loadFirstSeen() {
   if (_firstSeen) return _firstSeen;
   _firstSeen = new Map();
   try {
     for (const line of readFileSync(FIRST_SEEN_PATH, 'utf-8').split('\n').slice(1)) {
-      const [key, iso] = line.split('\t');
-      if (key && iso) _firstSeen.set(key, iso);
+      const [key, iso, source = '', last = ''] = line.split('\t');
+      if (!key || !iso) continue;
+      const prev = _firstSeen.get(key);
+      // Later lines refresh last_date only; the earliest first_seen wins.
+      _firstSeen.set(key, prev ? { ...prev, last_date: last || prev.last_date } : { first_seen: iso, source, last_date: last });
     }
   } catch { /* absent registry is normal on first run */ }
   return _firstSeen;
+}
+/** Test hook: drop the in-memory ledger so the next call re-reads FIRST_SEEN_PATH. */
+export function _resetFirstSeen() { _firstSeen = null; _pending = []; }
+
+/** Ledger entry for a job URL, or null. */
+export function ledgerGet(url) {
+  const key = dedupUrlKey(url);
+  return key ? (loadFirstSeen().get(key) || null) : null;
+}
+/** Insert/refresh an entry in memory and queue the TSV line (written by ledgerFlush). */
+export function ledgerPut(url, { now = new Date(), source = 'scan-index', lastDate = '' } = {}) {
+  const key = dedupUrlKey(url);
+  if (!key) return null;
+  const m = loadFirstSeen();
+  const prev = m.get(key);
+  const entry = prev ? { ...prev, last_date: lastDate || prev.last_date } : { first_seen: now.toISOString(), source, last_date: lastDate };
+  m.set(key, entry);
+  _pending.push(`${key}\t${entry.first_seen}\t${entry.source}\t${entry.last_date}`);
+  return entry;
+}
+/** Append queued ledger lines. Never throws: the ledger is an optimisation, not a reason to fail a scan. */
+export function ledgerFlush() {
+  if (!_pending.length) return 0;
+  const n = _pending.length;
+  try {
+    const header = existsSync(FIRST_SEEN_PATH) ? '' : FIRST_SEEN_HEADER;
+    appendFileSync(FIRST_SEEN_PATH, header + _pending.join('\n') + '\n');
+  } catch { return 0; }
+  _pending = [];
+  return n;
+}
+
+/** Window start as a Date for scan-index's two window modes (rolling hours, or N local calendar days). */
+export function windowStartFor({ hours = null, days = 1, now = new Date() } = {}) {
+  const ov = hours && windowOverride();
+  if (ov) return ov.start;
+  if (hours) return new Date(now.getTime() - hours * 3600 * 1000);
+  const c = new Date(now); c.setDate(c.getDate() - (days - 1)); c.setHours(0, 0, 0, 0); return c;
 }
 
 /**
@@ -783,13 +1024,13 @@ export function firstSeen(url, { now = new Date(), record = true } = {}) {
   const key = dedupUrlKey(url);
   if (!key) return null;
   const m = loadFirstSeen();
-  if (m.has(key)) return m.get(key);
+  if (m.has(key)) return m.get(key).first_seen;
   const iso = now.toISOString();
-  m.set(key, iso);
+  m.set(key, { first_seen: iso, source: 'scan-index', last_date: '' });
   if (!record) return iso;
   try {
-    const header = existsSync(FIRST_SEEN_PATH) ? '' : 'url_key\tfirst_seen_iso\n';
-    appendFileSync(FIRST_SEEN_PATH, `${header}${key}\t${iso}\n`);
+    const header = existsSync(FIRST_SEEN_PATH) ? '' : FIRST_SEEN_HEADER;
+    appendFileSync(FIRST_SEEN_PATH, `${header}${key}\t${iso}\tscan-index\t\n`);
   } catch { /* registry is an optimisation; never break a scan over it */ }
   return iso;
 }

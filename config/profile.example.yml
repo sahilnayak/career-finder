@@ -32,11 +32,10 @@ targets:
     - "Data Infrastructure"
   # Phrases that drop a title before scoring. A plain negative is NEUTRALIZED when a positive
   # is also present ("Snowflake" drops "Snowflake Administrator" but not "Data Engineer, Snowflake").
-  # Prefix with "!" for a HARD gate that always drops (seniority/level gates).
+  # Prefix with "!" for a HARD gate that always drops. There is NO built-in director/vp/head-of gate:
+  # add "!director" etc. here only if you want an individual-contributor track (or set
+  # seniority: "ic" below). `negatives:` is accepted as an alias of this key.
   title_negatives:
-    - "!director"
-    - "!vp"
-    - "!head of"
     - "!intern"
     - "manager"
     - "analyst"
@@ -45,8 +44,15 @@ targets:
     - "recruiter"
   # The role the daily primary_quota counts. Defaults to roles[0].
   primary_role: "Data Engineer"
-  # Your level, used by evaluation (e.g. "junior", "mid", "senior", "staff").
+  # Your level, used by evaluation (e.g. "junior", "mid", "senior", "staff"). Two TRACK values also
+  # add hard title gates: "ic" drops director/vp/head of/chief titles; "manager" drops vp/head of/chief.
   seniority: "mid"
+  # Other titles that mean the same job as a role above. Built-ins cover common careers (software
+  # engineer -> Member of Technical Staff, SWE; data engineer -> Analytics Engineer; sales engineer ->
+  # Solutions Engineer, Pre-Sales Engineer; registered nurse -> RN, Staff Nurse, Clinical Nurse). A list here REPLACES
+  # the built-in one for that role. Synonyms are matched, never searched for.
+  # synonyms:
+  #   "data engineer": ["Analytics Engineer", "Data Platform Engineer"]
   # Keep manager/director/lead/head titles? Defaults to true when any role above contains one
   # of those words. A title that matches a target role is never dropped for being management.
   include_management: false
@@ -157,6 +163,11 @@ integrations:
   linkedin: true
   linkedin_pages: 2      # result pages (25 cards each) per crawl search; 1-4, each page is budgeted
   linkedin_rescue: 5     # max tier-3 Apply-href rescues per crawl (1 logged-in page each); 0 = off
+  # The Apply-href tier (a logged-in job-page view per card, in the crawl rescue AND the nomination
+  # loop) is OFF unless you set this to true. Off, linkedin_rescue is ignored and the nomination loop
+  # resolves employers from apply URLs, HiringCafe source tokens and ATS slug probes only.
+  # (Also accepted as `linkedin: {apply_href_tier: true}` if you write linkedin as a mapping.)
+  linkedin_apply_href_tier: false
   gmail: false           # read-only Gmail lanes (job alerts, reply detection)
 
 # ── OUTREACH: draft-only email / LinkedIn notes (nothing is ever sent automatically) ─────────

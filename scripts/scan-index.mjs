@@ -19,17 +19,25 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { hardNegativeRegex } from './targets.mjs';
 import yaml from 'js-yaml';
 import {
-  detectApi, fetchProvider, PARSERS, buildTitleFilter, buildLocationFilter,
+  detectApi, fetchProvider, PARSERS, buildTitleFilter, buildLocationVerdict,
   loadSeenUrls, loadSeenCompanyRoles, dedupUrlKey, makeRecencyPredicate, makeHoursPredicate, firstSeen, firstSeenKnown, parallelFetch, taskHost,
   localTimeStr, dateOnly, scanWindowDays, dealbreakerHit, coverageWarning, parseOnlyList,
+  localDateStr, ledgerGet, ledgerPut, ledgerFlush, windowStartFor, workdayAgeDays, scanStats, ATS_MAX_JOBS,
 } from './scan-core.mjs';
+import { deadLaneFatal, isTimeoutError } from './lib/health.mjs';
+import { labelFreshness, newTally, tally, formatTally, DAY_LEVEL_FAMILIES } from './lib/freshness.mjs';
+import { summary as requestSummary, fmtStatuses } from './request-ledger.mjs';
 import { detectFamily } from './probe-ats-core.mjs';
+import { ROOT, ensureSeedIndex, loadRegistries, registryScanRows } from './lib/index-tsv.mjs';
 
 const INDEX_PATH = 'data/company-index.tsv';
 const PORTALS_PATH = 'portals.yml';
 const TODAY = new Date().toISOString().slice(0, 10);
 
 const DEFAULT_OUT = 'data/_candidates-new.tsv';
+// A board whose job count lands exactly on one of these is probably a truncated list (a page size or a
+// hard cap somewhere), not a coincidence. Warned per board; never fatal (a real board can hold 20 jobs).
+export const ROUND_CAPS = [20, 40, 200, ATS_MAX_JOBS];
 const USAGE = `Usage: node scripts/scan-index.mjs [options]
   --days N            recency window in days (default pipeline.scan_window_days)
   --hours H           rolling window in hours (overrides --days)
@@ -61,6 +69,9 @@ async function main() {
   const hoursIdx = argv.indexOf('--hours');
   const hours = hoursIdx !== -1 ? parseFloat(argv[hoursIdx + 1]) : null;
 
+  // Fresh install: restore the bundled starter index (offline) before declaring the index missing.
+  const seeded = ensureSeedIndex({ root: process.cwd(), index: INDEX_PATH, seedRoot: ROOT });
+  if (seeded.restored) console.log(`Company index was missing/empty: restored the bundled starter (${seeded.rows} boards).`);
   if (!existsSync(INDEX_PATH)) { console.error('No company-index.tsv. Seed it with discover-companies.mjs / build-company-index.mjs first.'); process.exit(1); }
   const portals = existsSync(PORTALS_PATH) ? (yaml.load(readFileSync(PORTALS_PATH, 'utf-8')) || {}) : {};
   // --primary-only: restrict the sweep to the PRIMARY target role (targets.primary_role in
@@ -75,7 +86,7 @@ async function main() {
   const titleFilter = PRIMARY_ONLY
     ? (t => isPrimaryRole(String(t || '')) && titleMatches(String(t || '')) && !PRIMARY_DROP.test(String(t || '')))
     : (t => baseTitleFilter(t) && !hardNeg.test(String(t || '')));
-  const locFilter = buildLocationFilter();
+  const locVerdict = buildLocationVerdict();
   // Every lane that names an employer must filter through the shared blocklists
   // (feedback_lanes_must_share_noise_blocklist). scan-index never did, so a staffing
   // marketplace already blocked everywhere else — Clera — kept surfacing from the index.
@@ -92,6 +103,22 @@ async function main() {
 
   const { rows } = loadIndex();
   let scannable = rows.filter(r => r.ats_api_url);
+  const indexBoards = scannable.length;
+  // Sector registries (data/registries/*.tsv): hand-verified boards swept in addition to the index.
+  // Only status=verified rows; a registry board already in the index is skipped (index wins).
+  const registryRows = registryScanRows(loadRegistries(), rows);
+  scannable = scannable.concat(registryRows);
+  const registryUrls = new Set(registryRows.map(r => r.careers_url));
+  // An empty or header-only index (and no registry boards) used to sweep 0 companies, print a clean
+  // summary and exit 0: a cron saw "success" while discovering nothing. Fail loudly instead.
+  if (!scannable.length) {
+    console.error('FATAL: the company index has no scannable boards '
+      + `(${rows.length} index row(s), ${indexBoards} with an ATS API, ${registryRows.length} verified registry board(s)). `
+      + 'Nothing was swept. Restore the bundled starter (templates/company-index.starter.tsv) by deleting the empty index file, or run '
+      + '`node scripts/discover-companies.mjs` then `node scripts/build-company-index.mjs`.');
+    process.exit(1);
+  }
+  if (registryRows.length) console.log(`Registries: +${registryRows.length} verified boards (${[...new Set(registryRows.map(r => r.source.replace('registry:', '')))].join(', ')})`);
 
   // --only <file>: restrict the sweep to the companies named in a TSV's first column
   // (see hot-list.mjs). This is what makes a 5-minute tier viable — polling 1,339
@@ -119,8 +146,20 @@ async function main() {
   console.log(`Sweeping ${scannable.length} indexed companies (${windowLabel}, ${areaLabel()})…\n`);
 
   let totalFound = 0, totalTitle = 0, totalLoc = 0, totalOld = 0, totalDup = 0;
+  const winDays = hours ? Math.max(1, Math.ceil(hours / 24)) : days;
+  const win = { start: windowStartFor({ hours, days }), isRecent, localDateStr };
+  const labels = newTally();
+  const famStats = {};            // family -> { boards, ok, jobs }
+  // Baseline for the dead-lane check: families that returned jobs on a previous run (index last_status
+  // "N jobs / ...", N>0). A family with no such history is a quiet or tiny lane, not a broken parser.
+  const famHadJobs = new Set();
+  for (const r of scannable) {
+    const n = parseInt(String(r.last_status || '').match(/^(\d+) jobs/)?.[1] || '0', 10);
+    if (n > 0) { const a = detectApi({ api: r.ats_api_url, careers_url: r.careers_url }); if (a) famHadJobs.add(a.type); }
+  }
+  const roundCapped = [];
   const candidates = [];
-  const errors = [];
+  const errors = [], timeouts = [];
   const zeroBoards = [], partialBoards = [];
   const statusByUrl = new Map();
 
@@ -129,21 +168,28 @@ async function main() {
     const api = detectApi({ api: r.ats_api_url, careers_url: r.careers_url });
     if (!api || !PARSERS[api.type]) { errors.push(`${r.company}: no parser`); return; }
     try {
-      const json = await fetchProvider(api);
+      // Workday: stop paging at the window edge and run location-detail requests only for rows that already
+      // pass the date + title gate (fetchWorkday); Oracle HCM stops by PostedDate.
+      const wdCut = Math.max(1, winDays);
+      const prefilter = (j) => { const a = workdayAgeDays(j.postedOn); return (a == null || a <= wdCut) && titleFilter(j.title) && !blocked(r.company); };
+      const json = await fetchProvider(api, { windowDays: winDays, windowStart: win.start, prefilter, label: r.company });
       const jobs = PARSERS[api.type](json, r.company, api);
       totalFound += jobs.length;
+      const fs = famStats[api.type] ||= { boards: 0, ok: 0, jobs: 0 };
+      fs.boards++; fs.ok++; fs.jobs += jobs.length;
+      if (ROUND_CAPS.includes(jobs.length) && !json?.earlyStopped && !json?.pageCapHit) roundCapped.push(`${r.company} (${api.type}: exactly ${jobs.length} jobs)`);
       if (!jobs.length) zeroBoards.push(`${r.company} (${api.type})`);
-      if (json && json.partial) partialBoards.push(`${r.company} (${api.type}: some pages failed, expected ${json.expected})`);
+      if (json && json.partial) partialBoards.push(`${r.company} (${api.type}: some pages failed or page cap hit, expected ${json.expected})`);
       // Undated families (Rippling, BambooHR, Taleo, date-less iCIMS tenants such as Acadia) used to
       // fail every recency check (postedAt=null) and so could never yield a candidate. They now
       // gate on FIRST-SEEN: the first sweep of a board seeds the registry silently (otherwise its
       // whole backlog would look "new"), and every later sweep surfaces only reqs not seen before.
       // Labelled date-basis first-seen so nobody mistakes it for an ATS publish date.
-      const boardSeeded = jobs.some(j => !j.postedAt && firstSeenKnown(j.url));
+      const boardSeeded = jobs.some(j => !j.postedAt && j.dateSource !== 'updated_at' && firstSeenKnown(j.url));
       // Register EVERY undated req up front (not just filter survivors), so the board counts as
       // seeded next sweep even if nothing on it matched the title/location filters this time.
       const newUndated = new Set();
-      for (const j of jobs) if (!j.postedAt && j.url) {
+      for (const j of jobs) if (!j.postedAt && j.dateSource !== 'updated_at' && j.url) {
         if (!firstSeenKnown(j.url)) newUndated.add(j.url);
         firstSeen(j.url, { record: !dryRun });
       }
@@ -157,13 +203,25 @@ async function main() {
         // Unless it says hybrid, the title must pass location.remote_policy too.
         if (/\b(remote|work from home|wfh|distributed|anywhere)\b/i.test(job.title) && !/hybrid/i.test(job.title)
             && !remoteOkFor(job.title, `${job.title} ${job.location || ''}`)) { totalLoc++; continue; }
-        if (!locFilter(job.location, job.title)) { totalLoc++; continue; }
+        const lv = locVerdict(job.location, job.title, job.offices);
+        if (!lv.ok) { totalLoc++; continue; }
+        job.loc_flag = lv.flag;
         let dateBasis = 'ats';
-        if (!job.postedAt) {
+        if (!job.postedAt && job.dateSource !== 'updated_at') {
           if (!newUndated.has(job.url) || !boardSeeded) { totalOld++; continue; }
           job.postedAt = new Date(firstSeen(job.url, { record: !dryRun })); dateBasis = 'first-seen';
+          if (!isRecent(job.postedAt)) { totalOld++; continue; }
+        } else {
+          // Dated families: label the evidence (see lib/freshness.mjs). Day-level families (Workday,
+          // Oracle, iCIMS, Taleo) are fresh only when the id was first seen inside this window.
+          const res = labelFreshness(job, api.type, ledgerGet(job.url), win);
+          tally(labels, res, job);
+          if (res.record && !dryRun) ledgerPut(job.url, { source: 'scan-index', lastDate: res.lastDate });
+          if (!res.fresh) { totalOld++; continue; }
+          job.dateLabel = res.label;
+          job.dateFlags = [...(job.repostFlags || []), ...(res.edge ? ['edge'] : [])];
+          if (DAY_LEVEL_FAMILIES.has(api.type)) dateBasis = 'first-seen+ats-day';
         }
-        if (!isRecent(job.postedAt)) { totalOld++; continue; }
         if (seenUrls.has(dedupUrlKey(job.url))) { totalDup++; continue; }
         const key = `${job.company.toLowerCase()}::${job.title.toLowerCase()}`;
         if (seenRoles.has(key)) { totalDup++; continue; }
@@ -173,8 +231,10 @@ async function main() {
       }
       statusByUrl.set(r.careers_url, `${jobs.length} jobs / ${kept} kept`);
     } catch (err) {
-      errors.push(`${r.company}: ${err.message}`);
-      statusByUrl.set(r.careers_url, `error: ${err.message}`);
+      (famStats[api.type] ||= { boards: 0, ok: 0, jobs: 0 }).boards++;
+      // A timeout says the HOST was slow, not that the board is dead: keep it out of the repair list.
+      if (isTimeoutError(err)) { timeouts.push(r.company); statusByUrl.set(r.careers_url, 'timeout'); }
+      else { errors.push(`${r.company}: ${err.message}`); statusByUrl.set(r.careers_url, `error: ${err.message}`); }
     }
     };
     t.host = taskHost(r.ats_api_url);   // per-host cap: 792 boards share api.ashbyhq.com
@@ -204,10 +264,23 @@ async function main() {
   console.log(`Outside ${windowLabel} window: ${totalOld}`);
   console.log(`Duplicates:        ${totalDup}`);
   console.log(`NEW candidates:    ${candidates.length}`);
+  console.log(`Freshness labels:  ${formatTally(labels)}   (dated families; fresh/new count as candidates)`);
+  if (scanStats.workdayTenants) {
+    console.log(`Workday:           ${scanStats.workdayTenants} tenants, ${scanStats.workdayEarlyStop} stopped early at the window edge, `
+      + `${scanStats.workdayPageCap.length} hit the page cap, ${scanStats.workdayDetailFetched} detail requests, `
+      + `${scanStats.workdayReposts} likely reposts flagged, ${scanStats.backoff429} backoff retries (${scanStats.backoffGaveUp} gave up)`);
+    if (scanStats.workdayPageCap.length) console.log(`  page cap hit (fresh rows may remain past it; rerun with --full): ${scanStats.workdayPageCap.slice(0, 10).join(', ')}`);
+    if (scanStats.workdayDetailCapped.length) console.log(`  WORKDAY_DETAIL_CAP bit (multi-site rows left unresolved): ${scanStats.workdayDetailCapped.slice(0, 10).join(', ')}`);
+  }
+  const http = requestSummary();
+  if (http.length) {
+    console.log('HTTP by family (requests, status:count):');
+    for (const h of http) console.log(`  ${h.family.padEnd(18)} ${String(h.requests).padStart(6)}  ${fmtStatuses(h.statuses)}`);
+  }
   if (coverageMsg) console.log(coverageMsg);
   console.log('━'.repeat(50));
   for (const c of candidates) {
-    console.log(`${c.company} | ${c.title} | ${c.location} | ${localTimeStr(c.postedAt)} | ${c.url}`);
+    console.log(`${c.company} | ${c.title} | ${c.location} | ${localTimeStr(c.postedAt)} | ${c.url}${c.loc_flag ? ` | loc_flag: ${c.loc_flag}` : ''}${c.dateLabel ? ` | date: ${c.dateLabel}${c.dateFlags?.length ? ` [${c.dateFlags.join(',')}]` : ''}` : ''}`);
   }
 
   // Name the boards that failed. These used to be counted and discarded, so a row could
@@ -219,10 +292,15 @@ async function main() {
     console.log(`\n${zeroBoards.length} board(s) parsed 0 jobs (empty board OR a broken parser; check these):`);
     for (const z of zeroBoards.slice(0, 15)) console.log(`  ${z}`);
   }
+  if (roundCapped.length) {
+    console.log(`\n${roundCapped.length} board(s) returned exactly a round cap (${ROUND_CAPS.join('/')}): possibly truncated:`);
+    for (const z of roundCapped.slice(0, 15)) console.log(`  ${z}`);
+  }
   if (partialBoards.length) {
     console.log(`\n${partialBoards.length} board(s) returned a PARTIAL list:`);
     for (const z of partialBoards.slice(0, 15)) console.log(`  ${z}`);
   }
+  if (timeouts.length) console.log(`\n${timeouts.length} board(s) timed out (slow host or network, not counted as dead; re-run later, repair-index will not touch them)`);
   if (errors.length) {
     const shown = errors.slice(0, 15);
     console.log(`\n${errors.length} board(s) failed:`);
@@ -235,9 +313,21 @@ async function main() {
   const outIdx = argv.indexOf('--out');
   const outPath = outIdx !== -1 && argv[outIdx + 1] ? argv[outIdx + 1] : (dryRun ? null : DEFAULT_OUT);
   if (outPath) {
-    const lines = candidates.map(c => [TODAY, c.company, c.title, c.location, (c.postedAt ? c.postedAt.toISOString() : ''), c.url, c.ats].join('\t'));
-    writeFileSync(outPath, 'date\tcompany\trole\tlocation\tposted\turl\tats\n' + (lines.length ? lines.join('\n') + '\n' : ''), 'utf-8');
+    const lines = candidates.map(c => [TODAY, c.company, c.title, c.location, (c.postedAt ? c.postedAt.toISOString() : ''), c.url, c.ats, c.loc_flag || '', c.dateLabel || '', (c.dateFlags || []).join(',')].join('\t'));
+    writeFileSync(outPath, 'date\tcompany\trole\tlocation\tposted\turl\tats\tloc_flag\tdate_label\tdate_flags\n' + (lines.length ? lines.join('\n') + '\n' : ''), 'utf-8');
     console.log(`\nWrote ${candidates.length} candidates → ${outPath}`);
+  }
+
+  if (!dryRun) { const n = ledgerFlush(); if (n) console.log(`First-seen ledger: +${n} row(s) -> data/_first-seen.tsv`); }
+
+  // A lane that fetched boards successfully yet parsed ZERO rows is a broken parser or a changed API,
+  // not a quiet market. >=5 such boards in a family that had jobs before = failure (non-zero exit, loud); else a warning.
+  // >=5 empty-200 boards AND the family returned jobs on a previous run = failure; otherwise a warning.
+  const deadLanes = Object.entries(famStats).filter(([, f]) => f.ok >= 1 && f.jobs === 0);
+  for (const [fam, f] of deadLanes) {
+    const fatal = deadLaneFatal(f, famHadJobs.has(fam));
+    console[fatal ? 'error' : 'log'](`${fatal ? 'FAIL' : 'WARN'}: ${fam} lane parsed 0 jobs from ${f.ok} board(s) that returned HTTP 200 (${f.boards} attempted). ${fatal ? 'Parser or API shape has likely changed.' : 'Probably empty boards; watch it.'}`);
+    if (fatal) process.exitCode = 1;
   }
 
   // Persist last_scanned (keeps the index live).
@@ -248,7 +338,7 @@ async function main() {
     const updated = text.map((line, i) => {
       if (i === 0 || !line) return line;
       const c = line.split('\t');
-      if (statusByUrl.has(c[ci.cu])) { c[ci.ls] = TODAY; c[ci.st] = statusByUrl.get(c[ci.cu]); }
+      if (!registryUrls.has(c[ci.cu]) && statusByUrl.has(c[ci.cu])) { c[ci.ls] = TODAY; c[ci.st] = statusByUrl.get(c[ci.cu]); }
       return c.join('\t');
     });
     writeFileSync(INDEX_PATH, updated.join('\n'), 'utf-8');
