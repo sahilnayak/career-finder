@@ -113,8 +113,11 @@ for (const { name, allowFail } of scripts) {
   const result = run('node', name.split(' '), { stdio: ['pipe', 'pipe', 'pipe'] });
   if (result !== null) {
     pass(`${name} runs OK`);
+  } else if (allowFail && !fileExists('cv.md')) {
+    // A fresh checkout has no cv.md or profile, so this script is meant to exit 1 here.
+    pass(`${name} exits non-zero without user data (expected on a fresh checkout)`);
   } else if (allowFail) {
-    warn(`${name} exited with error (expected without user data)`);
+    warn(`${name} exited with error even though cv.md exists`);
   } else {
     fail(`${name} crashed`);
   }
@@ -227,7 +230,7 @@ const allowedFiles = [
   'CODE_OF_CONDUCT.md', 'GOVERNANCE.md', 'SECURITY.md', 'SUPPORT.md',
   '.github/SECURITY.md',
   // Dashboard credit string
-  'dashboard/internal/ui/screens/pipeline.go',
+  'dashboard/internal/ui/screens/pipeline.go', 'dashboard/internal/ui/screens/progress.go',
 ];
 
 // Build pathspec for git grep — only scan tracked files matching these
