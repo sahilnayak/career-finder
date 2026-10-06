@@ -25,6 +25,7 @@ import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
 import { detectApi, fetchJson } from './scan-core.mjs';
 import { detectFamily } from './probe-ats-core.mjs';
 import { requireTargets, locationMatches, areaLabel } from './targets.mjs';
+import { loadNoise } from './role-filters.mjs';
 import { tracked as trackedFetch } from './request-ledger.mjs'; // every outbound request is counted
 
 const INDEX_PATH = 'data/company-index.tsv';
@@ -239,9 +240,12 @@ async function main() {
   if (ycOn) add(await fetchYC(), 'yc');
 
   const rows = [];
-  let withApi = 0, browserOnly = 0, unsupported = 0;
+  let withApi = 0, browserOnly = 0, unsupported = 0, noisy = 0;
+  // Shared staffing/aggregator + never-apply blocklist: an index row here is swept by every lane.
+  const NOISE = loadNoise();
   for (const [key, c] of candidates) {
     if (existing.has(key)) continue;
+    if (NOISE.some(n => (c.company || '').toLowerCase().includes(n))) { noisy++; continue; }
     const nameKey = (c.company || '').trim().toLowerCase();
     if (nameKey && existing.names.has(nameKey)) continue; // dedup on company name
     const api = detectApi({ careers_url: c.careers_url });
@@ -253,6 +257,7 @@ async function main() {
   }
 
   console.log(`Candidates: ${candidates.size} | already indexed: ${existing.size} | new: ${rows.length}`);
+  if (noisy) console.log(`  dropped by the noise/never-apply blocklist: ${noisy}`);
   console.log(`  with ATS API: ${withApi} | browser-only: ${browserOnly}${unsupported ? ` (${unsupported} on a detected-but-unsupported ATS)` : ''}`);
   if (!candidates.size) { console.error('discover-companies: every configured source returned 0 candidates (see lane logs above)'); process.exit(1); }
   if (fromFile) console.log(`  (merged --from ${fromFile})`);

@@ -64,7 +64,8 @@ Read `cv.md` and work out, with the evidence line for each:
    "director", "sales"). Add the **inverted forms** employers also post ("Engineer, Data",
    "Manager, Product", "Nurse, Registered (RN)") to title_keywords so a comma-first title still
    matches. Use a leading `!` for a hard negative that must ALWAYS drop the title even
-   when a positive matches (e.g. `!intern`, `!vp`). A plain negative is cancelled when a positive is
+   when a positive matches (e.g. `!intern`). Add `!director` / `!vp` / `!head of` only when the candidate
+   wants an individual-contributor track (or set `targets.seniority: ic`); there is no built-in default. A plain negative is cancelled when a positive is
    also present.
 
    **Generate real-world variants for EVERY role.** Titles match as token sets (any word order
@@ -261,9 +262,13 @@ node scripts/probe-ats.mjs --names "Employer A,Employer B,Employer C"
 
 ## 8. Seed the company index
 
+A fresh clone already ships the starter index (about 1,600 boards in `data/company-index.tsv`);
+`doctor`, `scan-index` and `update-system` restore it if it is ever missing. Do NOT run
+`build-company-index.mjs` first: it appends the profile's seed rows on top. Confirm instead:
+
 ```bash
-node scripts/build-company-index.mjs
-node scripts/discover-companies.mjs            # add --yc only for startup-heavy tech roles
+npm run doctor                                 # reports the board count by ATS family
+node scripts/discover-companies.mjs            # optional next step; add --yc only for startup-heavy tech roles
 node scripts/probe-ats.mjs --from-ledger --append   # later, once some jobs are scored
 ```
 

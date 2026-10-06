@@ -11,6 +11,36 @@ Key sections:
 - **compensation**: Target range, minimum, currency
 - **location**: Country, timezone, visa status, on-site availability
 
+## Role vocabulary and seniority (config/profile.yml `targets`)
+
+- **`targets.synonyms`**: other titles that mean the same job as a role, e.g.
+  `"sales engineer": ["Solutions Engineer", "Forward Deployed Engineer"]`. A list REPLACES the built-in one for
+  that role (the built-in Sales Engineer list is deliberately strict: Solutions / Pre-Sales only, so add FDE here
+  if you want it). Synonyms are matched, never searched for.
+- **`targets.seniority`**: `ic` drops director / VP / head of / chief titles, `manager` drops VP / head of / chief.
+  Left unset, no seniority title is dropped, and a "... Manager" role also keeps Director / Head of / Lead
+  titles in the same function.
+- **`targets.negatives`**: alias for `title_negatives`. Prefix a phrase with `!` to make it a hard drop.
+- Check any title with `node scripts/targets.mjs --test "<job title>" "<location>"`.
+
+## Registries (data/registries/*.tsv)
+
+Hand-verified employer boards that are swept in addition to the index (health systems, banks, big tech).
+To add one, append a row with `company, ats_type, ats_api_url, careers_url, status, verified_on, how_verified, note`
+and set `status` to `verified` only after the API URL returned jobs. Only `verified` rows are swept; the index
+wins on a duplicate. Workday boards on `*.myworkdaysite.com` (`/recruiting/{tenant}/{site}`) are supported.
+
+## Kill switches
+
+`npm run pipeline:off` (everything), `data/NOMINATE_OFF` or `NOMINATE_OFF=1` (the nomination loop only),
+`data/HOT_OFF`, `data/LINKEDIN_OFF`, `data/VERIFY_OFF`. See `docs/SCHEDULING.md`.
+
+## Index maintenance
+
+`npm run repair` lists dead or moved boards; `npm run repair:apply` fixes them. Boards that keep failing are
+retried on a backoff (`data/_repair-schedule.tsv`). `build-company-index.mjs --import <file> [--scrub]` merges
+another index. A fresh clone already has the starter index, so you do not need to build one.
+
 ## Target Roles (config/narrative.md)
 
 The archetype table in `config/narrative.md` determines how offers are scored and CVs are framed. Edit the table to match YOUR career targets:

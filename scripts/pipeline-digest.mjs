@@ -25,6 +25,9 @@ import { readFileSync, writeFileSync, existsSync, statSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { isPrimaryRole, loadTargets } from './targets.mjs';
 import { readLedger, aggregate, fmtStatuses } from './request-ledger.mjs';
+import { healthLines } from './lib/health.mjs';
+import { parseTsv } from './lib/index-tsv.mjs';
+import { readLedger as readNominations } from './lib/nominate.mjs';
 
 const argv = process.argv.slice(2);
 const has = (f) => argv.includes(f);
@@ -211,6 +214,20 @@ L.push('');
   L.push('## Requests (last 24h, data/_request-ledger.tsv)');
   if (!agg.size) L.push('- *(no ledger rows: no lane recorded a request, or the ledger is not wired into that lane)*');
   for (const [fam, e] of agg) L.push(`- ${fam}: **${e.requests}** (${fmtStatuses(e.statuses)})`);
+  L.push('');
+  // Health signals: status classes, round caps, Unproven 0 roles, nomination resolve rate.
+  let roles = [], syn = () => [];
+  try { const T = await import('./targets.mjs'); roles = T.loadTargets().targets.roles; syn = T.synonymsFor; } catch {}
+  const titles = [];
+  for (const [f, col] of [['data/scored-jobs.tsv', 2], ['data/_web-roles.tsv', 2], ['data/_candidates.tsv', 2]]) {
+    for (const l of lines(f).slice(1)) { const c = l.split('\t'); if (c[0] === today && c[col]) titles.push(c[col]); }
+  }
+  const nomRows = readNominations().filter((r) => r.date >= localDay(new Date(Date.now() - 7 * 864e5)));
+  const h = healthLines({ agg, indexRows: parseTsv(read('data/company-index.tsv')).rows, roles, synonymsFor: syn, titles, ledgerRows: nomRows });
+  L.push('## Health signals');
+  for (const w of h.warnings) L.push(`- ⚠️ **${w}**`);
+  if (!h.warnings.length) L.push('- no warnings');
+  for (const l of h.lines.filter((x) => !/^HTTP by family/.test(x) && !/^  \S+: \d+ \(/.test(x))) L.push(`- ${l.trim()}`);
   L.push('');
 }
 L.push('## Downstream (the stage that actually binds)');

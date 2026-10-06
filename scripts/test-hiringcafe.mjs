@@ -124,12 +124,12 @@ ok(/LINKEDIN_OFF/.test(lij), 'the LinkedIn kill-switch is honoured');
 ok(/'budget', 'jobsearch'|(?:spend|claim)\('jobsearch'/.test(lij) && !/'budget', 'search'|(?:spend|claim)\('search'/.test(lij),
   'linkedin-jobsearch bills the job counter, not the people-search counter');
 
-console.log('\n9. The lane never calls an LLM; a browser is a last-resort fallback only');
+console.log('\n9. The lane never calls an LLM; browser-first when Chrome is alive, plain GET otherwise');
 const code = stripComments(lane);
 ok(!/claude\s+-p/.test(code), 'no LLM call inside the lane');
-ok(/fetchViaPlainHttp/.test(code) && /fetchViaBrowser/.test(code), 'a plain HTTP GET is attempted before any browser fallback');
-ok(/try\s*{\s*html = await fetchViaPlainHttp/.test(lane) && /catch\s*(\(\w+\)\s*)?{\s*try\s*{\s*html = await fetchViaBrowser/.test(lane),
-  'the browser path only runs when the plain GET throws');
+ok(/fetchViaPlainHttp/.test(code) && /fetchViaBrowser/.test(code), 'both the plain GET and the browser path exist');
+ok(/TRANSPORT\.first === 'browser'[\s\S]{0,200}html = await fetchViaBrowser/.test(lane) && /html === undefined[\s\S]{0,120}html = await fetchViaPlainHttp/.test(lane),
+  'browser first when the debug Chrome is alive (2026-10-06: plain GET is a Cloudflare 403); the plain GET is the fallback');
 ok(!/chrome-devtools|playwright/i.test(code), 'no chrome-devtools MCP or Playwright in the lane');
 ok(/cdp\.mjs/.test(lane), 'the CDP fallback uses the zero-dependency cdp.mjs client');
 

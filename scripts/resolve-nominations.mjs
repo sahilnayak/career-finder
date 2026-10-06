@@ -33,11 +33,23 @@
  *   node scripts/resolve-nominations.mjs                # resolve, write data/_resolved-noms.tsv
  *   node scripts/resolve-nominations.mjs --dry-run
  *   node scripts/resolve-nominations.mjs --limit 20
+ *
+ * NOMINATION LOOP (--nominate, build plan step 5). The other direction: not "which req is this
+ * nomination" but "which BOARD is this employer". Every employer HiringCafe, the LinkedIn guest
+ * lane or the Gmail alerts surfaced goes through apply-url / slug probe / Workday tenant lookup,
+ * must pass a nonsense-slug control, and is appended to data/company-index.tsv. The new boards are
+ * written to data/_new-boards.tsv, which morning.mjs sweeps right away with
+ * `scan-index.mjs --only data/_new-boards.tsv` (lane ats:new-boards). Logic: scripts/lib/nominate.mjs.
+ *   node scripts/resolve-nominations.mjs --nominate [--dry-run] [--limit N] [--scan]
+ * --scan runs that scan-index sweep itself (for standalone use; morning.mjs does not pass it).
+ * Kill switch: data/NOMINATE_OFF or NOMINATE_OFF=1 (data/PIPELINE_OFF also stops it).
+ * LinkedIn: logged out only (<= 3 guest requests/day, >= 10s apart). The logged-in Apply-href tier
+ * runs only with integrations.linkedin_apply_href_tier: true (default false).
  */
 
 import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
 import { detectApi, fetchProvider, PARSERS } from './scan-core.mjs';
-import { REMOTE, LOCAL, loadNoise, titleDropped, remoteOkFor, requireTargets, TITLE_KEEP } from './role-filters.mjs';
+import { REMOTE, LOCAL, loadNoise, titleDropped, remoteOkFor, requireTargets, TITLE_KEEP, loadTargets } from './role-filters.mjs';
 
 requireTargets();
 
@@ -47,6 +59,32 @@ const val = (f, d) => { const i = argv.indexOf(f); return i !== -1 && argv[i + 1
 const DRY = has('--dry-run');
 const LIMIT = Number(val('--limit', '0')) || Infinity;
 const OUT = 'data/_resolved-noms.tsv';
+
+// ── nomination loop (employer -> board) ─────────────────────────────────────────────────────
+if (has('--nominate')) {
+  const N = await import('./lib/nominate.mjs');
+  const off = N.nominateOff();
+  if (off) { console.log(`nominate: SKIPPED, ${off}`); process.exit(0); }
+  const integ = (() => { try { return loadTargets().integrations || {}; } catch { return {}; } })();
+  const res = await N.runNominationLoop({
+    deps: await N.defaultDeps(), noise: loadNoise(), tierOn: N.applyHrefTierOn(integ),
+    limit: Number(val('--limit', '0')) || Infinity, dryRun: DRY,
+    nonsense: `zz-cf-control-${Math.random().toString(36).slice(2, 8)}`,
+  });
+  for (const r of res.results.filter((x) => !['noise', 'already-indexed', 'skipped-recent-fail'].includes(x.status))) {
+    console.log(`  ${r.status === N.RESOLVED ? '+' : '-'} ${r.company} [${r.lane}] ${r.status}${r.board ? ` ${r.board}` : ''}${r.detail ? ` (${r.detail})` : ''}`);
+  }
+  console.log(res.summary);
+  if (res.rate.rate != null && res.rate.rate < N.TARGET_RESOLVE_RATE) {
+    console.log(`WARNING: nomination resolve rate ${Math.round(res.rate.rate * 100)}% is below the ${N.TARGET_RESOLVE_RATE * 100}% target`);
+  }
+  if (has('--scan') && !DRY && res.added.length) {
+    const { spawnSync } = await import('child_process');
+    const r = spawnSync(process.execPath, ['scripts/scan-index.mjs', '--only', 'data/_new-boards.tsv', '--hours', '48', '--out', 'data/_candidates-new.tsv'], { stdio: 'inherit' });
+    process.exit(r.status || 0);
+  }
+  process.exit(0);
+}
 
 const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 

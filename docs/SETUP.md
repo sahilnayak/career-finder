@@ -60,13 +60,23 @@ Then paste a job offer URL or description. Career-Finder will automatically eval
 ```bash
 npm run doctor          # prerequisites
 npm run morning:dry     # every lane it would run, and why any is skipped; spends nothing
-npm run linkedin:login  # optional: log the dedicated Chrome profile into LinkedIn once
+npm run linkedin:login  # optional: log the dedicated Chrome profile into LinkedIn once. Also the fix when the HiringCafe lane reports "skipped: Cloudflare 403 and no Chrome" (it needs the debug Chrome on :9222 whenever Cloudflare blocks the plain request)
 npm run schedule -- install   # daily run at schedule.daily_time; --with-speed / --with-hot opt in
 npm run schedule:status
 ```
 
 Scheduled runs call `claude -p --dangerously-skip-permissions` (headless runs cannot answer
 prompts), on Sonnet, capped at `pipeline.daily_claude_cap` calls per day. See [`SCHEDULING.md`](SCHEDULING.md).
+
+## Starter company index
+
+A fresh clone ships `templates/company-index.starter.tsv`, about 1,600 employer boards with their ATS
+API URLs (no scan history). `npm run doctor` (and `scan-index`) copy it to `data/company-index.tsv` when
+that file is missing or empty, with no network. To merge boards from another career-ops or career-finder
+index instead: `node scripts/build-company-index.mjs --import other/company-index.tsv [--scrub]`. Rows are
+keyed on `ats_api_url`, boards the source already marked 404/dead are skipped, and a live local row is never
+overwritten. Hand-verified sector boards (health systems, banks, big tech) live in `data/registries/*.tsv`
+and are swept alongside the index.
 
 ## Available Commands
 

@@ -229,7 +229,7 @@ async function main() {
           totalDealbreaker++;
           continue;
         }
-        if (!locFilter(job.location)) {
+        if (!locFilter(job.location, job.title, job.offices)) {
           totalLocation++;
           continue;
         }
@@ -278,7 +278,7 @@ async function main() {
         if (!job.url) { totalFiltered++; continue; }
         if (!titleFilter(job.title)) { totalFiltered++; continue; }
         if (dealbreakerHit(job.company, job.title)) { totalDealbreaker++; continue; }
-        if (!locFilter(job.location)) { totalLocation++; continue; }
+        if (!locFilter(job.location, job.title, job.offices)) { totalLocation++; continue; }
         if (!isPostedToday(job.postedAt)) { totalNotToday++; continue; }
         if (seenUrls.has(dedupUrlKey(job.url))) { totalDupes++; continue; }
         const key = `${job.company.toLowerCase()}::${job.title.toLowerCase()}`;

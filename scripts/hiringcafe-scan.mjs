@@ -57,6 +57,13 @@
  * else backs off 15/30/60s, all inside a global ~170s budget. If the first two queries both end
  * in 429 the run stops (circuit breaker) and exits 3.
  *
+ * BROWSER-FIRST (2026-10-06). The plain GET is now a Cloudflare 403 on every request, so when the
+ * debug Chrome on :9222 is alive the lane uses it from the first page (lib/hiringcafe-fetch.mjs
+ * chooseTransport). With no Chrome the plain GET still runs once; a 403 there ends the lane with
+ * "skipped: Cloudflare 403 and no Chrome" and exit 4 instead of burning the retry budget. A page
+ * past the first with no __NEXT_DATA__ (seen: "full stack engineer" page 4) is logged and skipped,
+ * never a failed query.
+ *
  * Usage:
  *   node scripts/hiringcafe-scan.mjs                 # scan + append rows (the cron lane)
  *   node scripts/hiringcafe-scan.mjs --dry-run       # scan, print, write nothing
@@ -65,7 +72,8 @@
  *   node scripts/hiringcafe-scan.mjs --quiet         # summary line only
  *   node scripts/hiringcafe-scan.mjs --help          # usage, no sweep
  *
- * Exit codes: 0 ok, 1 profile not set up, 3 one or more queries failed after retries (or rate-limited).
+ * Exit codes: 0 ok, 1 profile not set up, 3 one or more queries failed after retries (or rate-limited),
+ * 4 skipped with a reason (Cloudflare 403 and no browser).
  */
 
 import { record as recordRequest } from './request-ledger.mjs';
@@ -73,6 +81,7 @@ import { readFileSync, appendFileSync, existsSync, writeFileSync } from 'fs';
 import { requireTargets, loadTargets, loadNoise, titleDropped, titleMatches, SEARCH_KEYWORDS, locationMatches, areaLabel } from './role-filters.mjs';
 import * as TG from './targets.mjs';
 import { cdpAlive, newPage } from './cdp.mjs';
+import { chooseTransport, collectPages, parseNextData, skipReason, EXIT_SKIPPED } from './lib/hiringcafe-fetch.mjs';
 
 const argv = process.argv.slice(2);
 const has = (f) => argv.includes(f);
@@ -90,10 +99,14 @@ Options:
   --max-pages N    pages per query (default 5)
   --sources        diagnostic: ATS family histogram only
   --quiet          summary line only
-  --no-browser     never fall back to the debug Chrome on :9222 (also CAREER_FINDER_NO_BROWSER=1)
+  --no-browser     never use the debug Chrome on :9222 (also CAREER_FINDER_NO_BROWSER=1)
+  --allow-browser  accepted for compatibility; the browser is already the default when :9222 is alive
   --help           this message
 
-Exit: 0 ok, 1 profile missing, 3 a query failed after retries.`);
+Transport: the debug Chrome on :9222 when it is alive (plain GET is a Cloudflare 403 as of
+2026-10-06), else the plain GET. Cloudflare 403 with no Chrome = skip with a reason, exit 4.
+
+Exit: 0 ok, 1 profile missing, 3 a query failed after retries, 4 skipped (Cloudflare 403, no Chrome).`);
   process.exit(0);
 }
 
@@ -233,8 +246,10 @@ async function fetchViaPlainHttp(url) {
   return res.text();
 }
 
-let cdpChecked = false, cdpOk = false;
-let CF_BLOCKED = false; // set once a 403 is seen with the browser disabled
+// Browser-first when the debug Chrome answers on :9222; decided once per run.
+const TRANSPORT = await chooseTransport({ noBrowser: NO_BROWSER, alive: () => cdpAlive() });
+if (!QUIET) console.error(`hiringcafe: transport ${TRANSPORT.first} (${TRANSPORT.why})`);
+let CF_BLOCKED = false; // set once a 403 leaves no transport that can succeed
 
 // Last resort: the shared debug-Chrome profile (port 9222) that LinkedIn and browser-boards
 // already use. Its cookies/TLS fingerprint clear Cloudflare's challenge with no visible
@@ -244,18 +259,20 @@ let CF_BLOCKED = false; // set once a 403 is seen with the browser disabled
 async function fetchViaBrowser(url) {
   // --no-browser / CAREER_FINDER_NO_BROWSER=1: never touch the shared :9222 Chrome (e.g. while a
   // LinkedIn session owns it, or in discovery-audit --live).
-  if (NO_BROWSER) throw new Error('browser fallback disabled (--no-browser)');
-  recordRequest(url, { status: 'cdp' });
-  if (!cdpChecked) { cdpChecked = true; cdpOk = !!(await cdpAlive()); }
-  if (!cdpOk) throw new Error('debug Chrome not running on :9222 (start with: node scripts/chrome-debug.mjs start)');
+  if (NO_BROWSER) throw new Error('browser disabled (--no-browser)');
+  if (!TRANSPORT.browser) throw new Error('debug Chrome not running on :9222 (start with: node scripts/chrome-debug.mjs start)');
   let tab;
   try {
     tab = await newPage();
     const nav = await tab.navigate(url);
+    recordRequest(url, { status: nav.status || 'cdp' }); // real status: the ledger shows 200s vs 403s per family
     if (nav.status && nav.status >= 400) {
       const e = new Error(`HTTP ${nav.status} (browser)`); e.status = nav.status; throw e;
     }
     return await tab.evaluate(() => document.documentElement.outerHTML);
+  } catch (e) {
+    if (!e.status) recordRequest(url, { status: 'error' });
+    throw e;
   } finally {
     try { await tab?.close(); } catch { /* tab already gone */ }
   }
@@ -267,28 +284,37 @@ async function fetchPage(searchQuery, page) {
   if (page > 0) url += `&page=${page}`;
 
   let html;
-  try {
-    html = await fetchViaPlainHttp(url);
-  } catch (plainErr) {
-    try {
-      html = await fetchViaBrowser(url);
-    } catch (e) {
-      // --no-browser + a Cloudflare 403: there is no path that can succeed, so stop the lane now
+  let browserErr = null;
+  if (TRANSPORT.first === 'browser') {
+    try { html = await fetchViaBrowser(url); }
+    catch (e) {
+      if (e.status === 429) throw e;     // a rate limit is not a transport failure; the retry loop owns it
+      browserErr = e;                    // tab crash / navigation error: try the plain GET before giving up
+    }
+  }
+  if (html === undefined) {
+    try { html = await fetchViaPlainHttp(url); }
+    catch (plainErr) {
+      // A 403 with no working browser path: nothing in this run can succeed. Stop the lane now
       // instead of burning the runtime budget on 15/30/60s backoffs (~157s/role in the 10-04 smoke).
-      if (NO_BROWSER && plainErr.status === 403) { CF_BLOCKED = true; plainErr.blocked = true; plainErr.message += " (Cloudflare block, browser disabled; not retrying)"; throw plainErr; }
-      // A 429 on either path is a rate limit; keep the server's Retry-After if it sent one.
-      if (plainErr.status === 429 && !e.status) { e.status = 429; }
-      if (e.status === 429 && plainErr.retryAfter != null) e.retryAfter = plainErr.retryAfter;
-      throw e;
+      if (plainErr.status === 403) {
+        CF_BLOCKED = true; plainErr.blocked = true;
+        plainErr.message += browserErr ? ` (Cloudflare block; browser path failed: ${browserErr.message})` : ' (Cloudflare block, no browser; not retrying)';
+      }
+      throw plainErr;
     }
   }
 
-  const m = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
-  // No __NEXT_DATA__ means the SSR contract changed. Fail loudly: a silent zero here is
-  // indistinguishable from a quiet market, which is the exact failure mode the LinkedIn lane
-  // spent two days in.
-  if (!m) throw new Error(`no __NEXT_DATA__ for "${searchQuery}" page ${page} — SSR contract changed?`);
-  const p = JSON.parse(m[1]).props.pageProps;
+  // No __NEXT_DATA__ means the SSR contract changed (page 0) or the page simply did not render
+  // (later pages): the caller skips a later page and fails page 0 loudly. A silent zero here is
+  // indistinguishable from a quiet market, which is the failure mode the LinkedIn lane lived in.
+  const nd = parseNextData(html);
+  if (!nd.ok) {
+    const e = new Error(`${nd.reason === 'bad-json' ? 'unparseable' : 'no'} __NEXT_DATA__ for "${searchQuery}" page ${page}${page === 0 ? ' — SSR contract changed?' : ''}`);
+    e.noNextData = true;
+    throw e;
+  }
+  const p = nd.pageProps;
   if (p.ssrError) throw new Error(`hiringcafe error for "${searchQuery}": ${p.ssrError}`);
   return { hits: p.ssrHits || [], last: p.ssrIsLastPage, total: p.ssrTotalCount, page: p.ssrPage };
 }
@@ -315,7 +341,7 @@ const BACKOFF_S = [15, 30, 60];
 // Throws after the last attempt; the error carries .status (429 = rate-limited).
 async function collectWithRetry(searchQuery) {
   for (let i = 0; ; i++) {
-    if (CF_BLOCKED) { const e = new Error("HTTP 403 (Cloudflare block, browser disabled; skipped)"); e.status = 403; throw e; }
+    if (CF_BLOCKED) { const e = new Error("HTTP 403 (Cloudflare block, no working browser; skipped)"); e.status = 403; throw e; }
     try { return await collect(searchQuery); }
     catch (e) {
       if (e.blocked || i >= BACKOFF_S.length) throw e;
@@ -329,16 +355,10 @@ async function collectWithRetry(searchQuery) {
 }
 
 async function collect(searchQuery) {
-  const out = [];
-  let truncated = false;
-  for (let page = 0; page < MAX_PAGES; page++) {
-    if (page > 0) await sleep(jitter());
-    const r = await fetchPage(searchQuery, page);
-    out.push(...r.hits);
-    if (r.last || r.hits.length === 0) return { hits: out, total: r.total, truncated: false };
-    if (page === MAX_PAGES - 1) truncated = true;
-  }
-  return { hits: out, total: null, truncated };
+  return collectPages((page) => fetchPage(searchQuery, page), {
+    maxPages: MAX_PAGES, sleep, jitter,
+    log: (m) => console.error(`hiringcafe: "${searchQuery}" ${m}`),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -386,6 +406,7 @@ const indexed = indexedBoards();
 const TODAY = new Date().toISOString().slice(0, 10);
 
 let rateLimited = 0;
+let skippedPages = 0;
 let tripped = false;
 for (const [qi, q] of QUERIES.entries()) {
   if (qi > 0) {
@@ -403,6 +424,7 @@ for (const [qi, q] of QUERIES.entries()) {
     if (qi === 1 && rateLimited === 2) { tripped = true; break; }
     continue;
   }
+  skippedPages += res.skippedPages.length;
   if (res.truncated) {
     // Never let a cap look like a complete sweep.
     console.error(`hiringcafe: "${q}" hit the ${MAX_PAGES}-page cap — results TRUNCATED, not exhausted`);
@@ -487,6 +509,12 @@ for (const [qi, q] of QUERIES.entries()) {
   }
 }
 
+// Cloudflare 403 and nothing could fetch a single page: a skip with a reason, not a quiet market.
+if (CF_BLOCKED && stats.raw === 0) {
+  console.log(skipReason({ noBrowser: NO_BROWSER }));
+  process.exit(EXIT_SKIPPED);
+}
+
 if (tripped) {
   console.log('hiringcafe rate-limited (HTTP 429) — try again later');
   process.exit(3);
@@ -508,6 +536,7 @@ const summary =
   `yoe>${MAX_YOE_OVER} over ${stats.yoe}, remote ${stats.remote}, ` +
   `multi-country ${stats.multiCountry}, non-local (${areaLabel()}) ${stats.nonLocal}, dup ${stats.dup}) ` +
   `| stretch ${stats.stretch} | new boards ${newBoards.size}` +
+  (skippedPages ? ` | skipped pages (no __NEXT_DATA__) ${skippedPages}` : '') +
   (failed.length ? ` | FAILED ${failed.length} query(ies): ${failed.join('; ')}` : '');
 
 if (DRY) {

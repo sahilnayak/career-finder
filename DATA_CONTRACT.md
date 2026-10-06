@@ -22,7 +22,10 @@ These files contain your personal data, customizations, and work product. Update
 | `reports/*` | Your evaluation reports |
 | `output/*` | Your generated PDFs |
 | `data/jds/*` | Your saved job descriptions |
-| `data/*.tsv`, `data/bullets/*`, `data/rosters/*` | Your pipeline ledgers, outreach bullets and contact caches |
+| `data/_first-seen.tsv` | First-seen ledger: `url_key`, `first_seen`, `source`, `last_date` (4 columns; the ATS date as last seen). It decides `fresh` / `new` vs `known` / `re-promoted`, so **deleting it reclassifies every row as new** and the next sweep re-surfaces old reqs. Safe to delete only to start fresh |
+| `data/_nominations.tsv` | 7-day re-probe ledger for employers the nominate loop could not resolve; deleting it just retries them sooner |
+| `data/_new-boards.tsv` | Boards found by the nominate loop, rewritten each run; deleting it loses nothing the index does not already hold |
+| `data/*.tsv`, `data/bullets/*`, `data/rosters/*` | Your pipeline ledgers, outreach bullets and contact caches. This includes `data/company-index.tsv` (your live index, seeded once from the starter) and `data/_repair-schedule.tsv` (backoff dates for dead boards) |
 
 ## System Layer (safe to auto-update)
 
@@ -42,6 +45,8 @@ These files contain system logic, scripts, templates, and instructions that impr
 | `batch/batch-runner.sh` | Batch orchestrator |
 | `dashboard/*` | Go TUI dashboard |
 | `templates/*` | Base templates |
+| `templates/company-index.starter.tsv` | Bundled starter company index (about 1,600 boards, `source=starter`, no scan history). `doctor`, `scan-index` and `update-system apply` copy it to `data/company-index.tsv` only when that file is missing or header-only |
+| `data/registries/*.tsv` | Sector registries (`healthcare`, `finance`, `bigtech`): hand-verified employer boards that `scan-index` reads in addition to the company index. Columns `company, ats_type, ats_api_url, careers_url, status, verified_on, how_verified, note`; `status` is `verified`, `unverified` or `needs-parser`, and only `verified` rows are swept. System layer: do not put personal rows here, add them to `data/company-index.tsv` |
 | `fonts/*` | Self-hosted fonts |
 | `.claude/skills/*` | Skill definitions |
 | `docs/*` | Documentation |

@@ -355,6 +355,7 @@ console.log('exit codes: 0 ok · 1 quota short or a lane failed · 2 setup probl
 const switches = [
   ['data/PIPELINE_OFF', 'every mode paused (npm run pipeline:on)'],
   ['data/HOT_OFF', 'hot mode paused'],
+  ['data/NOMINATE_OFF', 'nomination loop paused (delete the file to resume)'],
   ['data/LINKEDIN_OFF', 'LinkedIn lanes off (npm run linkedin:on)'],
   ['data/VERIFY_OFF', 'outreach verification off'],
   ['data/_hot-quota-backoff', 'speed/hot back off 30 min after a usage wall'],

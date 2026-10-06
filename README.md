@@ -26,6 +26,11 @@ and tracks everything. **It never applies or sends anything on its own.** You re
    `--with-speed` or `--with-hot` to opt in to more runs). Check it with `npm run schedule:status`.
 7. Paste a job URL to evaluate it, or run `/career-finder scan`.
 
+Maintenance commands: `npm run repair` (lists dead or moved boards in the index; `npm run repair:apply`
+fixes them), `node scripts/build-company-index.mjs --import <other-index.tsv> [--scrub]` (merge
+another company index), and the kill switches `npm run pipeline:off` / `data/NOMINATE_OFF`. Role
+vocabulary, seniority and registries are covered in [`docs/CUSTOMIZATION.md`](docs/CUSTOMIZATION.md).
+
 **Scheduled runs use `claude -p --dangerously-skip-permissions`**, because a headless run cannot
 answer permission prompts. They run on Sonnet and stop at `pipeline.daily_claude_cap` (default 40)
 claude calls per day. Pause everything with `npm run pipeline:off`. Details:

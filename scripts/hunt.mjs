@@ -274,7 +274,7 @@ async function cmdFind() {
       if (!titleOk(job.title)) continue;
       if (/\b(remote|work from home|wfh|distributed|anywhere)\b/i.test(job.title) && !/hybrid/i.test(job.title)
           && !rf.remoteOkFor(job.title, `${job.title} ${job.location || ''}`)) continue;
-      if (!locOk(job.location, job.title)) continue;
+      if (!locOk(job.location, job.title, job.offices)) continue;
       if (seenUrls.has(sc.dedupUrlKey(job.url))) continue;
       const key = `${String(job.company).toLowerCase()}::${String(job.title).toLowerCase()}`;
       if (seenRoles.has(key)) continue;

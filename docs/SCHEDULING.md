@@ -17,7 +17,8 @@ Before scheduling anything, run `npm run doctor`. It must not say "needs onboard
 
 | Lane | Needs | When missing |
 |---|---|---|
-| ATS index, HiringCafe, Workable, LinkedIn guest search | Node only | always runs |
+| ATS index, Workable, LinkedIn guest search | Node only | always runs |
+| HiringCafe | Node only while the plain GET works; when Cloudflare returns 403 it needs the debug Chrome on :9222 | with no Chrome the lane exits 4 and `morning` logs it as **skipped** (start Chrome with `npm run linkedin:login`) |
 | Scoring, full reports, web search, company discovery | `claude` CLI on PATH | skipped, logged |
 | LinkedIn crawl + faceted + semantic search (3 per role, max 4 roles, past 24h) | debug Chrome on :9222 logged into LinkedIn. `morning` starts Chrome itself (`chrome-debug.mjs start`) and checks the login | **FAILED lane** with the fix command (`npm run linkedin:login`), never a silent skip |
 | Browser-rendered boards | debug Chrome on :9222 | skipped, logged |
@@ -34,13 +35,41 @@ toward `pipeline.daily_claude_cap` (default 40, all modes together, logged in `d
 
 Logs: `data/_pipeline.log` (daily), `data/_speed-cron.log` (speed), `data/_hot.log` (hot).
 Pause everything: `npm run pipeline:off` (`data/PIPELINE_OFF`); resume with `npm run pipeline:on`.
-Other switches: `data/HOT_OFF` (hot only), `data/LINKEDIN_OFF`, `data/VERIFY_OFF`, dates listed in
+Other switches: `data/HOT_OFF` (hot only), `data/NOMINATE_OFF` (the nomination loop only; `NOMINATE_OFF=1` in the environment does the same), `data/LINKEDIN_OFF`, `data/VERIFY_OFF`, dates listed in
 `data/_pipeline-skip-dates.txt`. After a usage wall, speed and hot back off for 30 min (`data/_hot-quota-backoff`).
 
 Exit codes: `0` ok, `1` the daily quota is short, `2` setup problem, `3` scoring was deferred because
 Claude hit a usage limit (the queue rolls to the next run).
 
 Pick a time when the computer is awake. A sleeping laptop skips the run (launchd runs it on wake).
+
+## Daily nomination loop
+
+The daily run (never speed or hot) has one `nominate` lane, after the HiringCafe, LinkedIn and Gmail-alert
+lanes and before scoring. It takes every employer those lanes surfaced that is not already in
+`data/company-index.tsv` and turns it into a verified ATS board: employer apply URL or HiringCafe source token
+first, then a capped ATS slug probe (15 employers per run) and a capped Workday tenant lookup (5 per run). A
+board must return postings, and a nonsense-slug control on the same host must return none, or it is rejected
+(`control-failed`). Survivors are appended to the index and written to `data/_new-boards.tsv`, which the
+`ats:new-boards` lane sweeps in the same run. Every attempt is logged in `data/_nominations.tsv`; `npm run
+doctor` and the digest report the resolve rate (target 70%).
+
+Request budget: the loop itself makes no HiringCafe requests (it reads that lane's output) and at most 3
+LinkedIn guest requests a day, 10 s apart, logged out. The logged-in Apply-href tier is off unless
+`integrations.linkedin_apply_href_tier: true`. Run it by hand with `node scripts/resolve-nominations.mjs
+--nominate --dry-run`; pause it with `data/NOMINATE_OFF`.
+
+HiringCafe now uses the dedicated Chrome (port 9222) by default, because the plain request is a Cloudflare 403.
+With no Chrome the lane is skipped and logged as: `hiringcafe: Cloudflare 403 and no Chrome; run npm run
+linkedin:login to start the browser profile`.
+
+## Weekly repair (dead boards)
+
+The Monday daily run executes `repair-index.mjs --apply`; run it by hand with `npm run repair` (dry run) or
+`npm run repair:apply`. A board that is still dead is re-checked after 1, then 2, then 4 weeks (dates in
+`data/_repair-schedule.tsv`; `--force` ignores them). Each hit is checked against a nonsense-slug control on
+the same ATS host: if a random slug also returns jobs, the host is a SPA that answers 200 for anything and the
+board stays unverified rather than being repaired onto a wrong board.
 
 ## LinkedIn (on by default)
 

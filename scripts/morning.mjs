@@ -45,6 +45,7 @@
  *   data/PIPELINE_OFF               every mode (npm run pipeline:off / pipeline:on / pipeline:status)
  *   data/_pipeline-skip-dates.txt   one YYYY-MM-DD per line (local date); every mode skips that day
  *   data/HOT_OFF                    hot mode only
+ *   data/NOMINATE_OFF               the nomination loop only (lane `nominate`; NOMINATE_OFF=1 in the env works too)
  *   data/_hot-quota-backoff         written on a usage wall in speed/hot; those modes skip for 30 min
  * Locks: daily + hot share the pipeline lock, speed has its own. The lock mtime is refreshed on
  * every lane, so a live run is never stolen; a lock older than 2h is stale. A held lock logs
@@ -94,6 +95,7 @@ if (missingSetup.length && fixtureDry) {
 }
 
 const { requireTargets, searchKeywords, areaLabel } = await import('./targets.mjs');
+const { nominateOff, applyHrefTierOn } = await import('./lib/nominate.mjs');
 const T = requireTargets();
 
 // ── args ────────────────────────────────────────────────────────────────────────────────────
@@ -188,7 +190,7 @@ const LANE_SKILL = {
   'quota-replay': 'offer', discover: 'discover (Headless)', 'discover-companies': 'discover', 'probe-ats': 'discover',
   linkedin: 'scan-web (LinkedIn lanes)', 'linkedin:guest': 'speed', 'linkedin:email-alerts': 'scan-web',
   ats: 'scan-index', 'ats:repair-index': 'scan-index', 'portals-scan': 'scan', hiringcafe: 'scan-web', workable: 'scan-web',
-  'browser-boards': 'scan-web', websearch: 'scan-web (Headless)', 'web-roles': 'scan-web', 'resolve-nominations': 'pipeline',
+  'browser-boards': 'scan-web', websearch: 'scan-web (Headless)', 'web-roles': 'scan-web', 'resolve-nominations': 'pipeline', nominate: 'discover',
   'hot-list': 'speed', hot: 'speed', 'speed:primary-gap': 'speed', score: 'offer + pipeline', 'speed-metrics': 'speed',
   'snapshot-jd': 'pipeline', 'jd-pdfs': 'pipeline', 'backfill-reports': 'offer', reports: 'offer (A-G)', 'merge-tracker': 'tracker',
   'prune-qualifiers': 'qualifiers', 'prune-board': 'dashboard', reconcile: 'qualifiers', 'feedback-outcomes': 'feedback',
@@ -232,11 +234,15 @@ let LOCK = null;
 function touchLock() { if (LOCK) { try { const t = new Date(); utimesSync(LOCK, t, t); } catch {} } }
 
 /** Run a node script. Non-fatal by default; returns the exit status (0 in dry-run). */
-function node(name, script, args = [], { needs = [], stdoutTo = null, when, whyNot, dryArgs = null, dryCount = null } = {}) {
+function node(name, script, args = [], { needs = [], stdoutTo = null, when, whyNot, dryArgs = null, dryCount = null, skipExit = null } = {}) {
   if (!lane(name, { needs, script, when, whyNot })) return null;
   if (DRY && dryArgs) {
     // Zero-cost read-only lane: actually run it in its no-write mode and report real counts.
     const r = spawnSync(process.execPath, [script, ...dryArgs], { encoding: 'utf8', maxBuffer: 64 << 20, timeout: 15 * 60e3 });
+    if (skipExit != null && r.status === skipExit) {
+      const why = (r.stdout || '').trim().split('\n').pop() || `exit ${skipExit}`;
+      results.push([name, 'skip', why]); log(`[skip] ${name}: ${why}`); return r.status;
+    }
     const counts = r.status === 0 && dryCount ? dryCount(r.stdout || '') : '';
     results.push([name, r.status === 0 ? 'dry ok' : exitStr(r), counts]);
     log(`[dry-run] ${name}: node ${script} ${dryArgs.join(' ')} -> ${r.status === 0 ? counts || 'ok' : exitStr(r)}`);
@@ -249,6 +255,12 @@ function node(name, script, args = [], { needs = [], stdoutTo = null, when, whyN
   if (stdoutTo) writeFileSync(stdoutTo, r.stdout || '');
   else if (r.stdout) appendFileSync(PLOG, r.stdout);
   if (r.stderr) appendFileSync(PLOG, r.stderr);
+  if (skipExit != null && r.status === skipExit) {
+    // The script said "skipped, and here is why" (e.g. hiringcafe: Cloudflare 403 and no Chrome).
+    const why = (r.stdout || '').trim().split('\n').pop() || `exit ${skipExit}`;
+    results.push([name, 'skip', why]); log(`[skip] ${name}: ${why}`);
+    return r.status;
+  }
   results.push([name, r.status === 0 ? 'ok' : exitStr(r), '']);
   if (r.status !== 0) log(`[warn] ${name}: ${exitStr(r)}${r.error ? ` (${r.error.code || r.error.message})` : ""} (non-fatal)`);
   return r.status;
@@ -541,7 +553,10 @@ const LI_ROLES = ROLES.slice(0, 4);
 const LI_PAGES = String(Math.max(1, Number(P.linkedin_pages ?? T.integrations?.linkedin_pages) || 2));
 // Tier-3 Apply-href rescue: each is one extra logged-in page load, so it is capped by the profile
 // (integrations.linkedin_rescue, default 5; 0 disables it) instead of the crawl's built-in 20.
-const LI_RESCUE = Math.max(0, Math.floor(Number(P.linkedin_rescue ?? T.integrations?.linkedin_rescue ?? 5)) || 0);
+// The Apply-href tier reads a logged-in job page per card, so it is OFF unless the profile opts in
+// (integrations.linkedin_apply_href_tier: true); friend installs never spend logged-in views on it.
+const LI_APPLY_HREF_TIER = applyHrefTierOn(T.integrations);
+const LI_RESCUE = LI_APPLY_HREF_TIER ? Math.max(0, Math.floor(Number(P.linkedin_rescue ?? T.integrations?.linkedin_rescue ?? 5)) || 0) : 0;
 const LI_RESCUE_ARGS = LI_RESCUE > 0 ? ['--rescue-max', String(LI_RESCUE)] : ['--no-rescue'];
 const liWanted = PRE.linkedin_on && !selected(SKIP, 'linkedin') && (!ONLY.size || [...ONLY].some(o => o === 'linkedin' || o.startsWith('linkedin:')));
 // Logged-in LinkedIn runs ONLY inside DAILY (never speed/hot), and only when a Chrome binary resolves.
@@ -628,8 +643,12 @@ if (DAILY) {
 
 // 1e. Aggregator lanes that resolve to the employer's ATS.
 if (DAILY) {
-  node('hiringcafe', 'scripts/hiringcafe-scan.mjs', ['--quiet'],
-    { dryArgs: ['--dry-run'], dryCount: hiringcafeCounts, when: T.location.remote_policy === 'any' || (T.location.lat != null && T.location.lng != null), whyNot: 'location.lat/lng not set in config/profile.yml' });
+  // HiringCafe is behind a Cloudflare 403 for plain HTTP (2026-10-06); the dedicated Chrome clears it.
+  // The lane uses that Chrome by default, so bring it up if it is down (the LinkedIn block above
+  // usually already did). No Chrome = the script exits 4 and the lane is a logged skip with the reason.
+  if (!DRY && PRE.chrome && !selected(SKIP, 'hiringcafe') && (!ONLY.size || selected(ONLY, 'hiringcafe'))) PRE.browser = await ensureChrome();
+  node('hiringcafe', 'scripts/hiringcafe-scan.mjs', ['--quiet', '--allow-browser'],
+    { skipExit: 4, dryArgs: ['--dry-run', '--allow-browser'], dryCount: hiringcafeCounts, when: T.location.remote_policy === 'any' || (T.location.lat != null && T.location.lng != null), whyNot: 'location.lat/lng not set in config/profile.yml' });
   node('workable', 'scripts/workable-search.mjs', ['--quiet']);
   node('browser-boards', 'scripts/browser-boards.mjs', ['--quiet'], { needs: ['browser'] });
 }
@@ -641,6 +660,12 @@ if (DAILY && (DRY || onceToday('websearch'))) {
 
 // 1g. Fan-in: resolve boards for newly named employers, sweep them, clean queues.
 if (DAILY) {
+  // Nomination loop (step 5): every employer HiringCafe / LinkedIn guest / Gmail alerts surfaced ->
+  // verified ATS board -> company-index.tsv + data/_new-boards.tsv, which ats:new-boards below sweeps
+  // immediately. Once a day (it is daily-mode only), logged out, kill switch data/NOMINATE_OFF.
+  const nomOff = nominateOff();
+  node('nominate', 'scripts/resolve-nominations.mjs', ['--nominate'],
+    { when: !nomOff, whyNot: `nomination loop OFF: ${nomOff}`, skipExit: 4 });
   node('probe-ats', 'scripts/probe-ats.mjs', ['--unresolved', '--append']);
   // #17 single owner of discover-companies. No queue gate: seeds + YC run even with an empty queue.
   // YC is on by default; `discovery.yc: false` turns it off.
